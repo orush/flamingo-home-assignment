@@ -3440,8 +3440,17 @@ jobs:
             -Dexec.mainClass=com.microsoft.playwright.CLI \
             -Dexec.args="install --with-deps chromium"
 
+      # Gating: the framework's own correctness. Must be green.
       - name: Run tests
-        run: ./mvnw -B clean test
+        run: ./mvnw -B clean test -DexcludedGroups=finding
+
+      # Reporting: known defects in the service under test. Expected to fail,
+      # so it never gates the build, but the findings stay visible in the log
+      # and in the uploaded report.
+      - name: Defect report (non-gating)
+        if: always()
+        continue-on-error: true
+        run: ./mvnw -B test -Dgroups=finding
 
       - name: Upload Surefire reports
         if: always()
@@ -3601,6 +3610,13 @@ Chromium, installed by Playwright:
 
 # Run only API tests (REST + GraphQL)
 ./mvnw test -Dgroups="api"
+
+# Gating run: everything except the known-defect tests. This must be green.
+./mvnw test -DexcludedGroups="finding"
+
+# Defect report: the known-defect tests only. These are EXPECTED to fail;
+# each failure names the input, the expected response and what the service did.
+./mvnw test -Dgroups="finding"
 
 # Run only UI tests
 ./mvnw test -Dgroups="ui"
@@ -3765,10 +3781,16 @@ not applied suite-wide — a blanket retry turns reproducible defects into noise
 
 ## Findings
 
-Defects in the system under test, surfaced by the suite. Each is covered by a
-test that asserts current behaviour and names the expected behaviour in its
-title, so the suite stays green and the finding is still impossible to miss. If
-any is fixed, its test goes red — which is when someone should hear about it.
+Defects in the system under test, surfaced by the suite.
+
+Each is covered by a test that asserts the behaviour a **correct** service would
+have. Those tests therefore **fail**, and the failure message is the defect
+report. They are tagged `finding` so the gating build can exclude them
+(`-DexcludedGroups=finding`) while the defect report runs separately
+(`-Dgroups=finding`). A finding that starts passing means the service was fixed.
+
+The alternative — asserting the buggy behaviour so the suite stays green —
+normalises the defect and quietly bakes it into the expected contract.
 
 | # | Severity | Finding |
 | --- | --- | --- |

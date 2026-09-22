@@ -338,12 +338,32 @@ The forged-token column matters: the protected verbs reject a fabricated token
 rather than trusting the mere presence of the cookie, so enforcement is real
 where it exists.
 
-The three unenforced rows are recorded as **findings**. The tests assert the
-behaviour the service actually has, so the suite stays green and honest, and
-each finding names in its title what a correctly secured API should return. If
-the service is ever fixed, those tests fail — exactly when someone should be
-told. This is documented behaviour of Restful Booker, so it is a design defect
-in the system under test, not an undocumented regression.
+The three unenforced rows are recorded as **findings**. This is documented
+behaviour of Restful Booker, so they are design defects in the system under
+test, not undocumented regressions.
+
+### How findings are reported
+
+A finding is a test that asserts the behaviour a **correct** service would have,
+so it fails, and its failure message is the defect report — input, expected
+response, actual response, and what was persisted:
+
+```
+POST /booking with checkin="not-a-date" must answer 400 Bad Request;
+the service answered 200 and PERSISTED checkin as "0NaN-aN-aN"
+```
+
+Findings carry `@Tag("finding")` so a pipeline can separate gating from
+reporting:
+
+```
+./mvnw test -Dgroups=api -DexcludedGroups=finding   # gating: must be green
+./mvnw test -Dgroups=finding                        # defect report: expected red
+```
+
+This keeps the build's pass/fail signal meaningful — it reflects whether *our
+framework* works — while defects in the service under test stay loud rather
+than being normalised into green.
 
 ### API — Restful Booker (34)
 
