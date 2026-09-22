@@ -8,6 +8,14 @@
 # OS
 .DS_Store
 
+# Maven
+target/
+
+# Test output
+allure-results/
+allure-report/
+test-output/
+
 # Local configuration and credentials — never commit
 .env
 .env.local

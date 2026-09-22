@@ -1,0 +1,85 @@
+package com.flamingo.qa.config;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * Exercises the resolution mechanism, never a real value.
+ *
+ * <p>No endpoint or credential is stored in this repository, so these tests use
+ * a throwaway key and the defaulted keys instead of asserting on live config.
+ */
+class ConfigLoaderTest {
+
+    private static final String SCRATCH_KEY = "scratch.test.key";
+
+    @Test
+    @DisplayName("A system property beats every other source")
+    void systemPropertyTakesPrecedence() {
+        System.setProperty(SCRATCH_KEY, "from-system-property");
+        try {
+            assertThat(ConfigLoader.get(SCRATCH_KEY)).isEqualTo("from-system-property");
+        } finally {
+            System.clearProperty(SCRATCH_KEY);
+        }
+    }
+
+    @Test
+    @DisplayName("A blank override is ignored rather than returned")
+    void blankSystemPropertyFallsThrough() {
+        System.setProperty("ui.browser", "   ");
+        try {
+            assertThat(ConfigLoader.get("ui.browser")).isEqualTo("chromium");
+        } finally {
+            System.clearProperty("ui.browser");
+        }
+    }
+
+    @Test
+    @DisplayName("Optional keys fall back to built-in defaults")
+    void fallsBackToBuiltInDefaultForOptionalKeys() {
+        assertThat(ConfigLoader.get("ui.browser")).isEqualTo("chromium");
+        assertThat(ConfigLoader.get("ui.headless")).isEqualTo("true");
+        assertThat(ConfigLoader.get("http.timeout.ms")).isEqualTo("30000");
+    }
+
+    @Test
+    @DisplayName("A missing required key fails fast and says how to fix it")
+    void failsFastWithGuidanceWhenRequiredKeyIsMissing() {
+        assertThatThrownBy(() -> ConfigLoader.get("definitely.absent.key"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("definitely.absent.key")
+                .hasMessageContaining("DEFINITELY_ABSENT_KEY")
+                .hasMessageContaining(".env.example");
+    }
+
+    @Test
+    @DisplayName("Dotted keys map to the environment variable convention")
+    void mapsDottedKeyToEnvironmentVariableName() {
+        assertThat(ConfigLoader.toEnvKey("booker.base.url")).isEqualTo("BOOKER_BASE_URL");
+        assertThat(ConfigLoader.toEnvKey("http.timeout.ms")).isEqualTo("HTTP_TIMEOUT_MS");
+    }
+
+    @Test
+    @DisplayName("Typed accessors parse the defaults")
+    void typedAccessorsParseDefaults() {
+        assertThat(Config.headless()).isTrue();
+        assertThat(Config.timeoutMillis()).isEqualTo(30_000);
+        assertThat(Config.browser()).isEqualTo("chromium");
+    }
+
+    @Test
+    @DisplayName("Required endpoints and credentials are resolvable")
+    void requiredEndpointsAreResolvable() {
+        // Proves .env (or the CI environment) is wired up, without asserting
+        // any value. Fails loudly if the setup step was skipped.
+        assertThat(Config.bookerBaseUrl()).startsWith("http");
+        assertThat(Config.graphQlEndpoint()).startsWith("http");
+        assertThat(Config.uiBaseUrl()).startsWith("http");
+        assertThat(Config.bookerUsername()).isNotBlank();
+        assertThat(Config.bookerPassword()).isNotBlank();
+    }
+}
