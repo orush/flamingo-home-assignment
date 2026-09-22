@@ -19,7 +19,11 @@
 - Parallelism is fixed at 4 threads. The brief requires not overloading these public services.
 - Commit messages: short, imperative subject, no Claude/Anthropic attribution (per repo `CLAUDE.md`).
 - Group IDs / packages: `com.flamingo.qa`.
-- Every API test seeds its own data and cleans up. No inter-test ordering dependencies.
+- Every API test seeds its own data and asserts only on it. No inter-test ordering
+  dependencies, and **no teardown** — the service self-resets, cleanup is not a
+  requirement, and extra DELETEs are load on a public service.
+- Send a token only on `PUT` and `DELETE`. `POST` and `GET` are unauthenticated on
+  this API; adding credentials there would assert a rule it does not enforce.
 - **No URL, username or password may be written to any tracked file.** URLs and
   credentials have no built-in default; a missing one fails fast pointing at
   `.env.example`. Only `ui.browser`, `ui.headless` and `http.timeout.ms` have defaults.
@@ -971,31 +975,33 @@ import com.flamingo.qa.data.TestDataFactory;
 import com.flamingo.qa.junit.ApiTest;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Booking lifecycle against the live service.
+ *
+ * <p>Each test seeds the data it needs and asserts only on that data, so the
+ * tests are independent and safe to run concurrently. They deliberately do
+ * <em>not</em> delete what they create: the service resets periodically by
+ * design, teardown is not a requirement, and an extra DELETE per test is load
+ * on a public service the brief asks us not to overload.
+ *
+ * <p>Note which calls carry a token. This API leaves POST and GET
+ * unauthenticated and protects only PUT and DELETE, so passing credentials to
+ * the first two would assert a rule the API does not enforce.
+ */
 @Epic("Restful Booker")
 @Feature("Booking CRUD")
 class BookingCrudTest {
 
     private final BookingClient bookings = new BookingClient();
-    private Integer createdId;
-
-    @AfterEach
-    void removeCreatedBooking() {
-        if (createdId != null) {
-            bookings.delete(createdId, TokenProvider.token());
-            createdId = null;
-        }
-    }
 
     private int seedBooking(Booking booking) {
         ApiResponse<CreateBookingResponse> created = bookings.create(booking);
         assertThat(created.statusCode()).isEqualTo(200);
-        createdId = created.body().getBookingid();
-        return createdId;
+        return created.body().getBookingid();
     }
 
     @ApiTest
@@ -1004,7 +1010,6 @@ class BookingCrudTest {
         Booking booking = TestDataFactory.randomBooking();
 
         ApiResponse<CreateBookingResponse> response = bookings.create(booking);
-        createdId = response.body().getBookingid();
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body().getBookingid()).isPositive();
@@ -1046,7 +1051,6 @@ class BookingCrudTest {
         int id = seedBooking(TestDataFactory.randomBooking());
 
         ApiResponse<Void> response = bookings.delete(id, TokenProvider.token());
-        createdId = null; // already removed; skip @AfterEach cleanup
 
         // Documented quirk: this API answers a successful DELETE with 201 Created.
         assertThat(response.statusCode()).isEqualTo(201);
@@ -3662,8 +3666,13 @@ framework architecture at 40%.
 What was prioritised, and why:
 
 - **Isolation over convenience.** Every API test seeds its own booking and
-  cleans up afterwards. There is no ordered create-read-update-delete chain, so
-  one failure never cascades, and parallel execution is safe.
+  asserts only on that booking. There is no ordered create-read-update-delete
+  chain, so one failure never cascades and parallel execution is safe — verified
+  by running with methods fully concurrent, not just assumed.
+- **No teardown, deliberately.** Tests do not delete what they create. The
+  service resets periodically by design, cleanup is not a requirement, and an
+  extra DELETE per test is load on a public service the brief asks us not to
+  overload.
 - **Real behaviour over assumed behaviour.** Every endpoint was probed before
   any assertion was written. Several behave unlike the obvious expectation (see
   below), and the tests assert what the services actually do.

@@ -8,31 +8,33 @@ import com.flamingo.qa.data.TestDataFactory;
 import com.flamingo.qa.junit.ApiTest;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Booking lifecycle against the live service.
+ *
+ * <p>Each test seeds the data it needs and asserts only on that data, so the
+ * tests are independent and safe to run concurrently. They deliberately do
+ * <em>not</em> delete what they create: the service resets periodically by
+ * design, teardown is not a requirement, and an extra DELETE per test is load
+ * on a public service the brief asks us not to overload.
+ *
+ * <p>Note which calls carry a token. This API leaves POST and GET
+ * unauthenticated and protects only PUT and DELETE, so passing credentials to
+ * the first two would assert a rule the API does not enforce.
+ */
 @Epic("Restful Booker")
 @Feature("Booking CRUD")
 class BookingCrudTest {
 
     private final BookingClient bookings = new BookingClient();
-    private Integer createdId;
-
-    @AfterEach
-    void removeCreatedBooking() {
-        if (createdId != null) {
-            bookings.delete(createdId, TokenProvider.token());
-            createdId = null;
-        }
-    }
 
     private int seedBooking(Booking booking) {
         ApiResponse<CreateBookingResponse> created = bookings.create(booking);
         assertThat(created.statusCode()).isEqualTo(200);
-        createdId = created.body().getBookingid();
-        return createdId;
+        return created.body().getBookingid();
     }
 
     @ApiTest
@@ -41,7 +43,6 @@ class BookingCrudTest {
         Booking booking = TestDataFactory.randomBooking();
 
         ApiResponse<CreateBookingResponse> response = bookings.create(booking);
-        createdId = response.body().getBookingid();
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body().getBookingid()).isPositive();
@@ -83,7 +84,6 @@ class BookingCrudTest {
         int id = seedBooking(TestDataFactory.randomBooking());
 
         ApiResponse<Void> response = bookings.delete(id, TokenProvider.token());
-        createdId = null; // already removed; skip @AfterEach cleanup
 
         // Documented quirk: this API answers a successful DELETE with 201 Created.
         assertThat(response.statusCode()).isEqualTo(201);

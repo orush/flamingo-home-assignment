@@ -209,10 +209,21 @@ Models — `Booking`, `BookingDates`, `AuthRequest`, `AuthResponse`,
 
 ### 4.3 Test isolation
 
-Every API test seeds its own booking through `TestDataFactory` and removes it in
-`@AfterEach`. There is no ordered, inter-dependent CRUD chain: tests do not
+Every API test seeds its own booking through `TestDataFactory` and asserts only
+on that booking. There is no ordered, inter-dependent CRUD chain: tests do not
 share state, which is what makes parallel execution safe and stops one failure
-cascading into unrelated reds.
+cascading into unrelated reds. JUnit's default `PER_METHOD` lifecycle gives each
+test its own instance, so no fixture field is shared across concurrent methods.
+
+Tests deliberately do **not** delete what they create. Teardown is not a
+requirement, the service resets its data periodically by design, and an extra
+DELETE per test is load on a public service the brief asks us not to overload.
+`deletesBooking` still issues a DELETE, because that call is the behaviour under
+test rather than cleanup.
+
+Only `PUT` and `DELETE` carry a token. This API leaves `POST` and `GET`
+unauthenticated, so sending credentials on those would assert a rule it does not
+enforce; `rejectsUpdateWithoutToken` pins the 403 on the protected verbs.
 
 ## 5. GraphQL layer
 

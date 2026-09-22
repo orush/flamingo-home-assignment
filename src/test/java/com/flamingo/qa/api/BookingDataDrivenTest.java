@@ -1,7 +1,6 @@
 package com.flamingo.qa.api;
 
 import com.flamingo.qa.api.booker.BookingClient;
-import com.flamingo.qa.api.booker.TokenProvider;
 import com.flamingo.qa.api.booker.model.Booking;
 import com.flamingo.qa.api.booker.model.CreateBookingResponse;
 import com.flamingo.qa.data.TestDataFactory;
@@ -41,7 +40,5 @@ class BookingDataDrivenTest {
         assertThat(response.body().getBookingid()).isPositive();
         assertThat(response.body().getBooking().getDepositpaid()).isEqualTo(depositPaid);
         assertThat(response.body().getBooking().getAdditionalneeds()).isEqualTo(additionalNeeds);
-
-        bookings.delete(response.body().getBookingid(), TokenProvider.token());
     }
 }
