@@ -1,6 +1,7 @@
 package com.flamingo.qa.api;
 
 import com.flamingo.qa.api.booker.BookingClient;
+import com.flamingo.qa.api.booker.TokenProvider;
 import com.flamingo.qa.api.booker.model.Booking;
 import com.flamingo.qa.api.booker.model.CreateBookingResponse;
 import com.flamingo.qa.data.TestDataFactory;
@@ -34,7 +35,8 @@ class BookingDataDrivenTest {
                 .additionalneeds(additionalNeeds)
                 .build();
 
-        ApiResponse<CreateBookingResponse> response = bookings.create(booking);
+        ApiResponse<CreateBookingResponse> response =
+                bookings.create(booking, TokenProvider.token());
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body().getBookingid()).isPositive();

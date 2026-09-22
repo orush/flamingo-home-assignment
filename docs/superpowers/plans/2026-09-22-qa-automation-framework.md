@@ -22,8 +22,10 @@
 - Every API test seeds its own data and asserts only on it. No inter-test ordering
   dependencies, and **no teardown** — the service self-resets, cleanup is not a
   requirement, and extra DELETEs are load on a public service.
-- Send a token only on `PUT` and `DELETE`. `POST` and `GET` are unauthenticated on
-  this API; adding credentials there would assert a rule it does not enforce.
+- Client calls always send a token. The service only enforces it on `PUT`,
+  `PATCH` and `DELETE`; the unenforced endpoints are covered as findings in
+  `BookingAuthorizationTest`, which asserts observed behaviour and names the
+  expected behaviour in each test title.
 - **No URL, username or password may be written to any tracked file.** URLs and
   credentials have no built-in default; a missing one fails fast pointing at
   `.env.example`. Only `ui.browser`, `ui.headless` and `http.timeout.ms` have defaults.
@@ -3656,8 +3658,8 @@ writes to `.env` before the test step.
 
 ## Test Strategy
 
-23 scenario tests: 9 against Restful Booker, 7 against Hygraph GraphQL, 7 against
-DemoQA. A further 9 tests cover the framework itself (config resolution, the
+33 scenario tests: 19 against Restful Booker, 7 against Hygraph GraphQL, 7
+against DemoQA. A further 9 tests cover the framework itself (config resolution, the
 retry extension, Playwright injection), for 32 in total.
 The brief's minimums are 3, 5 and 2 — each area clears its minimum with margin,
 without padding, because the brief asks for quality over quantity and weights
@@ -3760,6 +3762,25 @@ Restful Booker runs on a free dyno that cold-starts slowly and resets its data
 periodically. Tests never assume pre-existing data, and a narrowly-scoped
 `@RetryOnFailure` is applied to two service-touching tests. It is deliberately
 not applied suite-wide — a blanket retry turns reproducible defects into noise.
+
+## Findings
+
+Defects in the system under test, surfaced by the suite. Each is covered by a
+test that asserts current behaviour and names the expected behaviour in its
+title, so the suite stays green and the finding is still impossible to miss. If
+any is fixed, its test goes red — which is when someone should hear about it.
+
+| # | Severity | Finding |
+| --- | --- | --- |
+| 1 | Critical | `POST /booking` accepts unauthenticated writes (200, expected 401/403). Anyone can write to the booking store. |
+| 2 | Critical | `GET /booking` enumerates every booking id with no token (200). |
+| 3 | Critical | `GET /booking/{id}` returns guest first and last names with no token (200). Combined with #2, every guest record is readable by anyone. |
+| 4 | Low | `DELETE /booking/{id}` answers a successful delete with `201 Created` rather than `200`/`204`. |
+| 5 | Low | `POST /auth` reports bad credentials as `200` with `{"reason":"Bad credentials"}` instead of `401`. |
+
+Findings 1-3 are documented behaviour of this service, so they are design
+defects rather than regressions. Enforcement on `PUT`, `PATCH` and `DELETE` is
+genuine: those verbs reject a forged token, not merely a missing one.
 
 ## What I Would Add With More Time
 

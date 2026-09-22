@@ -21,9 +21,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * design, teardown is not a requirement, and an extra DELETE per test is load
  * on a public service the brief asks us not to overload.
  *
- * <p>Note which calls carry a token. This API leaves POST and GET
- * unauthenticated and protects only PUT and DELETE, so passing credentials to
- * the first two would assert a rule the API does not enforce.
+ * <p>Every call carries a token, which is how a client of a booking API should
+ * behave. Note that this API only <em>enforces</em> it on PUT, PATCH and DELETE;
+ * that gap is covered as a finding in {@code BookingAuthorizationTest} rather
+ * than being silently accommodated here.
  */
 @Epic("Restful Booker")
 @Feature("Booking CRUD")
@@ -32,7 +33,8 @@ class BookingCrudTest {
     private final BookingClient bookings = new BookingClient();
 
     private int seedBooking(Booking booking) {
-        ApiResponse<CreateBookingResponse> created = bookings.create(booking);
+        ApiResponse<CreateBookingResponse> created =
+                bookings.create(booking, TokenProvider.token());
         assertThat(created.statusCode()).isEqualTo(200);
         return created.body().getBookingid();
     }
@@ -42,7 +44,8 @@ class BookingCrudTest {
     void createsBooking() {
         Booking booking = TestDataFactory.randomBooking();
 
-        ApiResponse<CreateBookingResponse> response = bookings.create(booking);
+        ApiResponse<CreateBookingResponse> response =
+                bookings.create(booking, TokenProvider.token());
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body().getBookingid()).isPositive();
@@ -55,7 +58,7 @@ class BookingCrudTest {
         Booking booking = TestDataFactory.randomBooking();
         int id = seedBooking(booking);
 
-        ApiResponse<Booking> response = bookings.getById(id);
+        ApiResponse<Booking> response = bookings.getById(id, TokenProvider.token());
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).isEqualTo(booking);
@@ -75,7 +78,7 @@ class BookingCrudTest {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).isEqualTo(updated);
-        assertThat(bookings.getById(id).body()).isEqualTo(updated);
+        assertThat(bookings.getById(id, TokenProvider.token()).body()).isEqualTo(updated);
     }
 
     @ApiTest
@@ -87,6 +90,6 @@ class BookingCrudTest {
 
         // Documented quirk: this API answers a successful DELETE with 201 Created.
         assertThat(response.statusCode()).isEqualTo(201);
-        assertThat(bookings.getById(id).statusCode()).isEqualTo(404);
+        assertThat(bookings.getById(id, TokenProvider.token()).statusCode()).isEqualTo(404);
     }
 }

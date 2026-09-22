@@ -14,7 +14,7 @@ home assignment. It covers three targets:
 
 The assignment grades framework architecture at 40%, code quality at 30%, test
 design at 20% and documentation at 10%. The design optimises for that weighting:
-23 well-chosen tests on top of a framework whose structure is legible
+33 well-chosen tests on top of a framework whose structure is legible
 without reading any test body.
 
 Scope is the **full bonus build**: every "nice to have" in the brief (Allure,
@@ -221,9 +221,10 @@ DELETE per test is load on a public service the brief asks us not to overload.
 `deletesBooking` still issues a DELETE, because that call is the behaviour under
 test rather than cleanup.
 
-Only `PUT` and `DELETE` carry a token. This API leaves `POST` and `GET`
-unauthenticated, so sending credentials on those would assert a rule it does not
-enforce; `rejectsUpdateWithoutToken` pins the 403 on the protected verbs.
+Every client call carries a token, which is how a consumer of a booking API
+should behave. The service only *enforces* it on `PUT`, `PATCH` and `DELETE`;
+that gap is covered deliberately in the authorization suite below rather than
+being quietly accommodated.
 
 ## 5. GraphQL layer
 
@@ -313,12 +314,38 @@ Every assertion lives in the test and uses AssertJ.
 
 ## 7. Test inventory
 
-Total: 23 test methods (9 REST + 7 GraphQL + 7 UI). The brief's minimums are
+Total: 33 test methods (19 REST + 7 GraphQL + 7 UI). The brief's minimums are
 3 API CRUD, 5 GraphQL and 2 UI, so each area clears its minimum with margin
 without padding. The data-driven create test is one method producing several
 invocations.
 
-### API — Restful Booker (9)
+### Authorization matrix
+
+`BookingClient` exposes every endpoint in two forms, with and without a token,
+so authorization can be probed as a matrix rather than a spot check. Each
+endpoint is exercised three ways — no token, valid token, forged token:
+
+| Endpoint | no token | valid | forged | Verdict |
+| --- | --- | --- | --- | --- |
+| `POST /booking` | 200 | 200 | 200 | **not enforced** |
+| `GET /booking` | 200 | 200 | 200 | **not enforced** |
+| `GET /booking/{id}` | 200 | 200 | 200 | **not enforced** |
+| `PUT /booking/{id}` | 403 | 200 | 403 | enforced |
+| `PATCH /booking/{id}` | 403 | 200 | 403 | enforced |
+| `DELETE /booking/{id}` | 403 | 201 | 403 | enforced |
+
+The forged-token column matters: the protected verbs reject a fabricated token
+rather than trusting the mere presence of the cookie, so enforcement is real
+where it exists.
+
+The three unenforced rows are recorded as **findings**. The tests assert the
+behaviour the service actually has, so the suite stays green and honest, and
+each finding names in its title what a correctly secured API should return. If
+the service is ever fixed, those tests fail — exactly when someone should be
+told. This is documented behaviour of Restful Booker, so it is a design defect
+in the system under test, not an undocumented regression.
+
+### API — Restful Booker (19)
 
 | Test | Asserts |
 | --- | --- |
@@ -331,6 +358,12 @@ invocations.
 | Get non-existent id | 404, body `Not Found` |
 | Update without token | 403, body `Forbidden` |
 | Data-driven create (`@ParameterizedTest`) | Deposit true/false, with and without `additionalneeds` |
+| FINDING: unauthenticated `POST /booking` | 200 where 401/403 is expected |
+| FINDING: unauthenticated `GET /booking` | 200, and ids really are returned |
+| FINDING: unauthenticated `GET /booking/{id}` | 200, guest names disclosed |
+| `PUT` / `PATCH` / `DELETE` without a token | 403 `Forbidden` on each |
+| `PUT` / `PATCH` / `DELETE` with a forged token | 403 on each |
+| Valid token authorises the protected verbs | 200 / 200 / 201 |
 
 ### GraphQL — Hygraph (7)
 

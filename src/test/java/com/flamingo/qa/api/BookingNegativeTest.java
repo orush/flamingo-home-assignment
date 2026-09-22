@@ -1,6 +1,7 @@
 package com.flamingo.qa.api;
 
 import com.flamingo.qa.api.booker.BookingClient;
+import com.flamingo.qa.api.booker.TokenProvider;
 import com.flamingo.qa.api.booker.model.Booking;
 import com.flamingo.qa.data.TestDataFactory;
 import com.flamingo.qa.junit.ApiTest;
@@ -21,7 +22,8 @@ class BookingNegativeTest {
     @ApiTest
     @DisplayName("Retrieving a non-existent booking returns 404 with a plain-text body")
     void returnsNotFoundForUnknownId() {
-        ApiResponse<Booking> response = bookings.getById(ABSENT_BOOKING_ID);
+        ApiResponse<Booking> response =
+                bookings.getById(ABSENT_BOOKING_ID, TokenProvider.token());
 
         assertThat(response.statusCode()).isEqualTo(404);
         assertThat(response.rawBody()).isEqualTo("Not Found");
