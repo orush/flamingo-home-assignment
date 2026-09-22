@@ -14,7 +14,7 @@ home assignment. It covers three targets:
 
 The assignment grades framework architecture at 40%, code quality at 30%, test
 design at 20% and documentation at 10%. The design optimises for that weighting:
-33 well-chosen tests on top of a framework whose structure is legible
+48 well-chosen tests on top of a framework whose structure is legible
 without reading any test body.
 
 Scope is the **full bonus build**: every "nice to have" in the brief (Allure,
@@ -314,7 +314,7 @@ Every assertion lives in the test and uses AssertJ.
 
 ## 7. Test inventory
 
-Total: 33 test methods (19 REST + 7 GraphQL + 7 UI). The brief's minimums are
+Total: 48 test methods (34 REST + 7 GraphQL + 7 UI). The brief's minimums are
 3 API CRUD, 5 GraphQL and 2 UI, so each area clears its minimum with margin
 without padding. The data-driven create test is one method producing several
 invocations.
@@ -345,7 +345,7 @@ the service is ever fixed, those tests fail — exactly when someone should be
 told. This is documented behaviour of Restful Booker, so it is a design defect
 in the system under test, not an undocumented regression.
 
-### API — Restful Booker (19)
+### API — Restful Booker (34)
 
 | Test | Asserts |
 | --- | --- |
@@ -354,9 +354,19 @@ in the system under test, not an undocumented regression.
 | Create booking returns id and echoes payload | 200, id > 0, fields match |
 | Get by id returns created booking | 200, body equals created booking |
 | Update replaces booking fields | 200, updated fields, auth via token cookie |
+| Partial update changes only named fields | 200, untouched fields preserved |
 | Delete removes booking | 201, then `GET` → 404 |
 | Get non-existent id | 404, body `Not Found` |
-| Update without token | 403, body `Forbidden` |
+| Non-numeric id | 404, body `Not Found` |
+| PUT / PATCH / DELETE a non-existent id | **405 `Method Not Allowed`**, not 404 |
+| Malformed JSON | 400 `Bad Request` |
+| PUT with a partial body | 400 `Bad Request` |
+| FINDING: empty create body | 500, expected 400 |
+| FINDING: create missing a required field | 500, expected 400 |
+| FINDING: non-numeric `totalprice` | 200, silently stored as `null` |
+| FINDING: unparseable dates | 200, persisted as `0NaN-aN-aN` |
+| FINDING: checkout before checkin | 200, accepted |
+| FINDING: negative `totalprice` | 200, accepted |
 | Data-driven create (`@ParameterizedTest`) | Deposit true/false, with and without `additionalneeds` |
 | FINDING: unauthenticated `POST /booking` | 200 where 401/403 is expected |
 | FINDING: unauthenticated `GET /booking` | 200, and ids really are returned |

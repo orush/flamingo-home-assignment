@@ -10,6 +10,8 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -79,6 +81,28 @@ class BookingCrudTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).isEqualTo(updated);
         assertThat(bookings.getById(id, TokenProvider.token()).body()).isEqualTo(updated);
+    }
+
+    @ApiTest
+    @DisplayName("Partially updating a booking changes only the supplied fields")
+    void partiallyUpdatesBooking() {
+        Booking original = TestDataFactory.randomBooking();
+        int id = seedBooking(original);
+
+        ApiResponse<Booking> response = bookings.patch(
+                id, Map.of("firstname", "Patched", "totalprice", 4242), TokenProvider.token());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+
+        Booking patched = response.body();
+        assertThat(patched.getFirstname()).isEqualTo("Patched");
+        assertThat(patched.getTotalprice()).isEqualTo(4242);
+        // Everything not named in the request survives untouched — the whole
+        // point of PATCH over PUT.
+        assertThat(patched.getLastname()).isEqualTo(original.getLastname());
+        assertThat(patched.getDepositpaid()).isEqualTo(original.getDepositpaid());
+        assertThat(patched.getBookingdates()).isEqualTo(original.getBookingdates());
+        assertThat(patched.getAdditionalneeds()).isEqualTo(original.getAdditionalneeds());
     }
 
     @ApiTest

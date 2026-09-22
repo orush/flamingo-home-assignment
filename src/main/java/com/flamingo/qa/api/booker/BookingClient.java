@@ -1,5 +1,6 @@
 package com.flamingo.qa.api.booker;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.flamingo.qa.api.ApiResponse;
 import com.flamingo.qa.api.RestClientFactory;
 import com.flamingo.qa.api.booker.model.Booking;
@@ -60,9 +61,36 @@ public class BookingClient {
         return ApiResponse.from(response, Booking.class);
     }
 
+    /** Fetch by an arbitrary path segment, so non-numeric ids can be exercised. */
+    @Step("Get booking with raw id {id}")
+    public ApiResponse<Booking> getByRawId(String id, String token) {
+        Response response = spec(token).get(BY_ID, id);
+        return ApiResponse.from(response, Booking.class);
+    }
+
     @Step("Get booking {id} without a token")
     public ApiResponse<Booking> getByIdWithoutToken(int id) {
         return getById(id, null);
+    }
+
+    /**
+     * Create from an arbitrary payload.
+     *
+     * <p>Returns a {@link JsonNode} rather than a typed model because invalid
+     * payloads come back with values the model cannot hold — a string where an
+     * integer belongs, for instance. Accepts a String body for malformed JSON.
+     */
+    @Step("Create booking from a raw payload")
+    public ApiResponse<JsonNode> createRaw(Object body, String token) {
+        Response response = spec(token).body(body).post(COLLECTION);
+        return ApiResponse.from(response, JsonNode.class);
+    }
+
+    /** Update from an arbitrary payload, for incomplete or malformed bodies. */
+    @Step("Update booking {id} from a raw payload")
+    public ApiResponse<JsonNode> updateRaw(int id, Object body, String token) {
+        Response response = spec(token).body(body).put(BY_ID, id);
+        return ApiResponse.from(response, JsonNode.class);
     }
 
     @Step("Update booking {id}")

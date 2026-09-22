@@ -3658,7 +3658,7 @@ writes to `.env` before the test step.
 
 ## Test Strategy
 
-33 scenario tests: 19 against Restful Booker, 7 against Hygraph GraphQL, 7
+48 scenario tests: 34 against Restful Booker, 7 against Hygraph GraphQL, 7
 against DemoQA. A further 9 tests cover the framework itself (config resolution, the
 retry extension, Playwright injection), for 32 in total.
 The brief's minimums are 3, 5 and 2 — each area clears its minimum with margin,
@@ -3775,8 +3775,13 @@ any is fixed, its test goes red — which is when someone should hear about it.
 | 1 | Critical | `POST /booking` accepts unauthenticated writes (200, expected 401/403). Anyone can write to the booking store. |
 | 2 | Critical | `GET /booking` enumerates every booking id with no token (200). |
 | 3 | Critical | `GET /booking/{id}` returns guest first and last names with no token (200). Combined with #2, every guest record is readable by anyone. |
-| 4 | Low | `DELETE /booking/{id}` answers a successful delete with `201 Created` rather than `200`/`204`. |
-| 5 | Low | `POST /auth` reports bad credentials as `200` with `{"reason":"Bad credentials"}` instead of `401`. |
+| 4 | Critical | Unparseable dates are accepted and **persisted as `0NaN-aN-aN`**. The request succeeds and corrupt data reaches the store, where every later reader must cope with it. |
+| 5 | Critical | A non-numeric `totalprice` is accepted and **silently stored as `null`** — neither rejected nor preserved, so a booking ends up with no price and the caller is never told. |
+| 6 | Normal | An empty create body, or one missing a required field, returns `500 Internal Server Error` instead of `400`. A client mistake is reported as a server fault. |
+| 7 | Normal | No range validation: a checkout date before checkin, and a negative `totalprice`, are both accepted. |
+| 8 | Low | `PUT`/`PATCH`/`DELETE` against a missing booking return `405 Method Not Allowed` rather than `404 Not Found`. |
+| 9 | Low | `DELETE /booking/{id}` answers a successful delete with `201 Created` rather than `200`/`204`. |
+| 10 | Low | `POST /auth` reports bad credentials as `200` with `{"reason":"Bad credentials"}` instead of `401`. |
 
 Findings 1-3 are documented behaviour of this service, so they are design
 defects rather than regressions. Enforcement on `PUT`, `PATCH` and `DELETE` is
