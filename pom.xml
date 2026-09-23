@@ -23,7 +23,7 @@
     <lombok.version>1.18.38</lombok.version>
     <dotenv.version>3.2.0</dotenv.version>
     <allure.version>2.29.1</allure.version>
-    <aspectj.version>1.9.24</aspectj.version>
+    <aspectj.version>1.9.25.1</aspectj.version>
   </properties>
 
   <dependencies>
