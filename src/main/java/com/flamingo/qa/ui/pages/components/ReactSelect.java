@@ -1,5 +1,6 @@
 package com.flamingo.qa.ui.pages.components;
 
+import io.qameta.allure.Step;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
@@ -22,6 +23,7 @@ public class ReactSelect {
     }
 
     /** Types the option's text to filter the menu, then picks the exact match. */
+    @Step("Choose '{option}'")
     public void choose(String option) {
         input.fill(option);
         page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName(option).setExact(true)).click();

@@ -1,5 +1,6 @@
 package com.flamingo.qa.ui.pages;
 
+import io.qameta.allure.Step;
 import com.flamingo.qa.ui.model.WebTableRecord;
 import com.flamingo.qa.ui.pages.components.RegistrationDialog;
 import com.microsoft.playwright.Locator;
@@ -18,6 +19,7 @@ public class WebTablesPage extends BasePage {
         super(page);
     }
 
+    @Step("Open the web tables page")
     public WebTablesPage open() {
         openPath("/webtables");
         page.locator(ROWS).first().waitFor();
@@ -35,17 +37,20 @@ public class WebTablesPage extends BasePage {
         return records().stream().map(WebTableRecord::getFirstName).collect(Collectors.toList());
     }
 
+    @Step("Open the add-record dialog")
     public RegistrationDialog openAddDialog() {
         page.locator("#addNewRecordButton").click();
         return new RegistrationDialog(page).waitUntilOpen();
     }
 
+    @Step("Add record {record.email}")
     public WebTablesPage addRecord(WebTableRecord record) {
         openAddDialog().fill(record).submitAndWaitUntilClosed();
         rowFor(record.getEmail()).waitFor();
         return this;
     }
 
+    @Step("Edit record {email}")
     public WebTablesPage editRecord(String email, WebTableRecord updated) {
         rowFor(email).locator("[id^='edit-record-']").click();
         new RegistrationDialog(page).waitUntilOpen().fill(updated).submitAndWaitUntilClosed();
@@ -53,6 +58,7 @@ public class WebTablesPage extends BasePage {
         return this;
     }
 
+    @Step("Delete record {email}")
     public WebTablesPage deleteRecord(String email) {
         Locator row = rowFor(email);
         row.locator("[id^='delete-record-']").click();
@@ -64,6 +70,7 @@ public class WebTablesPage extends BasePage {
      * Types into the search box and waits until every rendered row contains the
      * term, so callers read the filtered table rather than a mid-update one.
      */
+    @Step("Search for '{term}'")
     public WebTablesPage search(String term) {
         page.locator("#searchBox").fill(term);
         page.waitForFunction(
@@ -73,6 +80,7 @@ public class WebTablesPage extends BasePage {
         return this;
     }
 
+    @Step("Sort by '{columnHeader}'")
     public WebTablesPage sortBy(String columnHeader) {
         page.getByRole(AriaRole.COLUMNHEADER,
                 new Page.GetByRoleOptions().setName(columnHeader).setExact(true)).click();

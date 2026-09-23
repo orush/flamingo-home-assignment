@@ -2,6 +2,8 @@ package com.flamingo.qa.config;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,7 +13,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p>No endpoint or credential is stored in this repository, so these tests use
  * a throwaway key and the defaulted keys instead of asserting on live config.
+ *
+ * <p>It writes JVM-wide system properties, which the lock declares to JUnit's
+ * parallel scheduler.
  */
+@ResourceLock(Resources.SYSTEM_PROPERTIES)
 class ConfigLoaderTest {
 
     private static final String SCRATCH_KEY = "scratch.test.key";
@@ -30,11 +36,15 @@ class ConfigLoaderTest {
     @Test
     @DisplayName("A blank override is ignored rather than returned")
     void blankSystemPropertyFallsThrough() {
-        System.setProperty("ui.browser", "   ");
+        // Uses the scratch key, never a real one: other test classes read real
+        // keys concurrently, and must not see a value this test planted.
+        System.setProperty(SCRATCH_KEY, "   ");
         try {
-            assertThat(ConfigLoader.get("ui.browser")).isEqualTo("chromium");
+            assertThatThrownBy(() -> ConfigLoader.get(SCRATCH_KEY))
+                    .as("the blank value is skipped, so the key counts as missing")
+                    .isInstanceOf(IllegalStateException.class);
         } finally {
-            System.clearProperty("ui.browser");
+            System.clearProperty(SCRATCH_KEY);
         }
     }
 

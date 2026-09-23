@@ -1,5 +1,6 @@
 package com.flamingo.qa.ui.pages.components;
 
+import io.qameta.allure.Step;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.TimeoutError;
@@ -28,6 +29,7 @@ public class DatePicker {
         this.input = input;
     }
 
+    @Step("Pick date {date}")
     public void pick(LocalDate date) {
         input.click();
         Locator calendar = page.locator(".react-datepicker");

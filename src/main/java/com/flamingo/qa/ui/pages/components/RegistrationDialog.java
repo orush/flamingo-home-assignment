@@ -1,5 +1,6 @@
 package com.flamingo.qa.ui.pages.components;
 
+import io.qameta.allure.Step;
 import com.flamingo.qa.ui.model.WebTableRecord;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -29,6 +30,7 @@ public class RegistrationDialog {
     }
 
     /** Replaces every field with the record's values. */
+    @Step("Fill in the record dialog")
     public RegistrationDialog fill(WebTableRecord record) {
         dialog.locator("#firstName").fill(record.getFirstName());
         dialog.locator("#lastName").fill(record.getLastName());
@@ -39,6 +41,7 @@ public class RegistrationDialog {
         return this;
     }
 
+    @Step("Submit the record dialog")
     public void submit() {
         dialog.locator("#submit").click();
     }

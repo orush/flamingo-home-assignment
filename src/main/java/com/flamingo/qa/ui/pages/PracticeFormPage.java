@@ -1,5 +1,6 @@
 package com.flamingo.qa.ui.pages;
 
+import io.qameta.allure.Step;
 import com.flamingo.qa.ui.ExactText;
 import com.flamingo.qa.ui.model.Hobby;
 import com.flamingo.qa.ui.model.StudentRegistration;
@@ -26,6 +27,7 @@ public class PracticeFormPage extends BasePage {
         this.form = page.locator("#userForm");
     }
 
+    @Step("Open the practice form")
     public PracticeFormPage open() {
         openPath("/automation-practice-form");
         form.locator("#firstName").waitFor();
@@ -33,6 +35,7 @@ public class PracticeFormPage extends BasePage {
     }
 
     /** Enters every non-null field of the registration. */
+    @Step("Fill in the registration form")
     public PracticeFormPage fill(StudentRegistration registration) {
         type("#firstName", registration.getFirstName());
         type("#lastName", registration.getLastName());
@@ -69,6 +72,7 @@ public class PracticeFormPage extends BasePage {
     }
 
     /** Clicks submit without assuming the outcome. */
+    @Step("Submit the form")
     public PracticeFormPage attemptSubmit() {
         form.locator("#submit").click();
         return this;

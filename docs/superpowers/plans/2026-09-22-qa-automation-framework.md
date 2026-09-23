@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 54 scenario tests (plus 24 framework self-tests) on reusable infrastructure.
+**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 54 scenario tests (plus 29 framework self-tests) on reusable infrastructure.
 
 **Architecture:** Single Maven module. All reusable framework code lives in `src/main/java` (config, REST/GraphQL clients, page objects, JUnit extensions); `src/test/java` holds only test scenarios. Test wiring is by composition — `@ApiTest` / `@UiTest` meta-annotations plus a `ParameterResolver` that injects Playwright `Page` objects — rather than inheritance.
 
@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-qa-automation-framework-design.md`
 
-> **Status:** Tasks 1–9 are implemented. Where the shipped code differs from the
+> **Status:** Tasks 1–11 are implemented. Where the shipped code differs from the
 > code blocks in those tasks, **the code is the source of truth** — each
 > deviation was driven by live behaviour of the services and is explained in its
 > commit message and in the design doc.
@@ -3052,6 +3052,9 @@ git commit -m "Add practice form page objects and submission tests"
 ### Task 10: Retry extension for service-touching tests
 
 **Files:**
+> Implemented as `@RetryOnNetworkError`, which retries only network errors and reports
+> repeated attempts as aborted. See the design doc, section 8.2.
+
 - Create: `src/main/java/com/flamingo/qa/junit/RetryOnFailure.java`
 - Create: `src/main/java/com/flamingo/qa/junit/RetryExtension.java`
 - Test: `src/test/java/com/flamingo/qa/junit/RetryExtensionTest.java`
@@ -3342,8 +3345,8 @@ allure.link.issue.pattern=https://github.com/orush/flamingo-home-assignment/issu
 - [ ] **Step 3: Run the full suite in parallel**
 
 Run: `./mvnw clean test`
-Expected, with findings excluded (`-DexcludedGroups=finding`): 70 test methods
-pass (46 scenario + 24 framework), 0 failures. Wall-clock should be noticeably shorter than serial.
+Expected, with findings excluded (`-DexcludedGroups=finding`): 75 test methods
+pass (46 scenario + 29 framework), 0 failures. Wall-clock should be noticeably shorter than serial.
 
 If UI tests now fail intermittently, the most likely cause is `PlaywrightFactory`
 state leaking across threads. Verify each thread gets its own `Playwright` —
@@ -3619,25 +3622,28 @@ Chromium, installed by Playwright:
 
 ## How to Run
 
+Always include `clean`: without it, Maven keeps stale files in `target/`, including
+old test configuration (see *A serial baseline that was not serial*).
+
 ```bash
 # Run all tests
 ./mvnw clean test
 
 # Run only API tests (REST + GraphQL)
-./mvnw test -Dgroups="api"
+./mvnw clean test -Dgroups="api"
 
 # Gating run: everything except the known-defect tests. This must be green.
-./mvnw test -DexcludedGroups="finding"
+./mvnw clean test -DexcludedGroups="finding"
 
 # Defect report: the known-defect tests only. These are EXPECTED to fail;
 # each failure names the input, the expected response and what the service did.
-./mvnw test -Dgroups="finding"
+./mvnw clean test -Dgroups="finding"
 
 # Run only UI tests
-./mvnw test -Dgroups="ui"
+./mvnw clean test -Dgroups="ui"
 
 # Run the UI headed, for debugging
-./mvnw test -Dgroups="ui" -Dui.headless=false
+./mvnw clean test -Dgroups="ui" -Dui.headless=false
 
 # Generate and open the Allure report
 ./mvnw allure:serve
@@ -3657,7 +3663,7 @@ boundary is enforced by the compiler rather than by convention.
 | `api.graphql` | GraphQL request/response types, client, `.graphql` loader |
 | `ui` | Playwright lifecycle, ad blocking |
 | `ui.pages` | Page objects and components |
-| `junit` | `@ApiTest` / `@UiTest` / `@RetryOnFailure`, Page injection, failure capture |
+| `junit` | `@ApiTest` / `@UiTest` / `@RetryOnNetworkError`, Page injection, failure capture |
 | `data` | Test data factory |
 
 Test wiring is by composition, not inheritance: `@UiTest` bundles `@Test`,
@@ -3690,7 +3696,7 @@ writes to `.env` before the test step.
 ## Test Strategy
 
 54 scenario test methods: 31 against Restful Booker, 12 against Hygraph GraphQL,
-11 against DemoQA. A further 24 tests cover the framework itself (config resolution, the
+11 against DemoQA. A further 29 tests cover the framework itself (config resolution, the
 retry extension, Playwright injection), for 32 in total.
 The brief's minimums are 3, 5 and 2 — each area clears its minimum with margin,
 without padding, because the brief asks for quality over quantity and weights
@@ -3853,12 +3859,34 @@ arrangement demonstrates the handling practice — no credentials in source, no
 credentials in history, secrets injected at run time — on a codebase where the
 cost of getting it wrong is zero.
 
-### Flaky public services
+### Flaky public services, without hiding real failures
 
 Restful Booker runs on a free dyno that cold-starts slowly and resets its data
-periodically. Tests never assume pre-existing data, and a narrowly-scoped
-`@RetryOnFailure` is applied to two service-touching tests. It is deliberately
-not applied suite-wide — a blanket retry turns reproducible defects into noise.
+periodically, so tests never assume pre-existing data. The first retry design
+had two flaws: it retried any failure, so an assertion could be retried until a
+lucky run passed, and it swallowed failed attempts, so they were reported as
+passes. `@RetryOnNetworkError` retries only when the cause is an `IOException`,
+fails immediately on anything else, and reports each repeated attempt as
+aborted and labelled. Its behaviour is proven with JUnit's `EngineTestKit`.
+
+Writing it exposed a real gap: REST Assured had **no timeout**, so a stalled
+service would have hung the build rather than failing with a retryable
+`SocketTimeoutException`. Connect and read timeouts now come from configuration,
+tested against a local server that accepts connections and never replies — and
+that test was confirmed to fail when the timeouts are removed.
+
+### A serial baseline that was not serial
+
+Measuring the speed-up first suggested parallel runs were *slower* than serial:
+25 s against 22 s. The "serial" figure was wrong. Earlier, while checking
+whether the API tests were safe under method-level concurrency, a temporary
+`junit-platform.properties` was created and then deleted from
+`src/test/resources` — but `mvn test` without `clean` never removes stale files
+from `target/test-classes`, so every later run kept loading it. Measured
+properly, serial takes 1:09 and parallel 25 s. The silver lining: the suite had
+been passing under *harsher* concurrency than it ships with, for dozens of runs.
+The lesson is in the commands: this README and the CI workflow always run
+`clean test`.
 
 ## Findings
 
@@ -3944,7 +3972,7 @@ git push
 
 ## Final verification
 
-- [ ] `./mvnw clean test -DexcludedGroups=finding` passes: 70 methods, 0 failures
+- [ ] `./mvnw clean test -DexcludedGroups=finding` passes: 75 methods, 0 failures
 - [ ] `./mvnw test -Dgroups="finding"` runs 8 methods, all failing with defect-report messages
 - [ ] `./mvnw test -Dgroups="api"` runs 43 tagged methods / 48 executions
 - [ ] `./mvnw test -Dgroups="ui"` runs 13 tagged methods

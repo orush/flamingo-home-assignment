@@ -145,8 +145,8 @@ flamingo-home-assignment/
     │   │   └── pages/   BasePage, PracticeFormPage, WebTablesPage,
     │   │                components/ SubmissionModal, RegistrationDialog,
     │   │                            WebTableGrid
-    │   ├── junit/       PlaywrightExtension, RetryOnFailureExtension,
-    │   │                @ApiTest, @UiTest, @RetryOnFailure
+    │   ├── junit/       PlaywrightExtension, RetryExtension,
+    │   │                @ApiTest, @UiTest, @RetryOnNetworkError
     │   └── data/        TestDataFactory
     ├── main/resources/  allure.properties, graphql/*.graphql
     └── test/
@@ -497,13 +497,48 @@ classes, same-thread within a class, **fixed thread count of 4**. Deliberately
 not "threads = cores": the brief asks that these public services not be
 overloaded.
 
+`fixed.max-pool-size=4` is set as well, and it matters. JUnit's source shows the
+fork-join pool may otherwise grow to `parallelism + 256` threads, adding
+compensating threads when workers block — and every UI worker thread owns a
+browser. Measured over three consecutive runs: all green, at most three browsers
+alive at once, none left afterwards.
+
+Measured speed-up: the test phase drops from 68.6 s serial to 23.9 s, and the
+whole Maven run from 1:09 to 25 s. The sum of individual test times is unchanged
+(68 s against 72 s), so the gain is concurrency, not faster tests; the floor is
+the slowest class, web tables, at about 18 s.
+
+`ConfigLoaderTest` writes JVM-wide system properties. It touches only its own
+scratch key and declares `@ResourceLock(Resources.SYSTEM_PROPERTIES)`.
+
 ### 8.2 Retry
 
-A custom `@RetryOnFailure` extension
-(`TestTemplateInvocationContextProvider`) applied **only** to tests touching the
-public services, which do intermittently hiccup. It is not applied suite-wide —
-a blanket retry hides real defects. This is the first item to cut if scope
-tightens.
+`@RetryOnNetworkError`, a custom `TestTemplateInvocationContextProvider`,
+replaces `@Test` on a test that may meet a transient network failure. Two rules
+keep it from hiding defects:
+
+- **It retries only network errors** — an `IOException` anywhere in the cause
+  chain (timeout, refused connection, DNS). Every other failure, including every
+  assertion, fails the test on the first attempt: a wrong status code or wrong
+  data may be a real defect.
+- **A repeated attempt is reported as aborted**, with its cause, and retries are
+  labelled `(retry 1 of 2)`. Nothing is swallowed into a pass, so flakiness
+  stays visible in the report.
+
+Attempts always run sequentially on one thread (`@Execution(SAME_THREAD)` on the
+annotation), because whether to run another depends on how the last one ended.
+The semantics are proven with JUnit's `EngineTestKit`, which runs deliberately
+failing example tests in isolation and inspects their events.
+
+For a network error to occur at all, requests need a bound: REST Assured sets no
+timeout by default, so a stalled service would block the build indefinitely.
+Connect and read timeouts now come from `http.timeout.ms`, verified against a
+local server that accepts connections and never replies.
+
+It is applied to two tests, as planned. Because it can no longer retry an
+assertion, it would now be safe as the default for every API test; that is a
+reporting trade-off, since each retried test then appears as a template with
+invocations.
 
 ### 8.3 Reporting
 
