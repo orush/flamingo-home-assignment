@@ -13,7 +13,8 @@
 > **Status:** All 13 tasks are implemented. The shipped `README.md` and
 > `.github/workflows/tests.yml` supersede the drafts in Tasks 12 and 13. Since
 > then the framework self-tests have moved to the `framework` test package and
-> run in their own workflow, `.github/workflows/framework.yml`. Where the shipped code differs from the
+> run in their own workflow, `.github/workflows/framework.yml`, and UI assertions
+> retry through `Eventually` (6 more self-tests, 35 in all). Where the shipped code differs from the
 > code blocks in those tasks, **the code is the source of truth** — each
 > deviation was driven by live behaviour of the services and is explained in its
 > commit message and in the design doc.

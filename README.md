@@ -8,8 +8,8 @@ the Hygraph GraphQL example API and DemoQA — built on JUnit 5, REST Assured,
 Playwright for Java, AssertJ and Jackson, with Allure reporting and GitHub
 Actions CI.
 
-**54 scenario tests** (31 REST, 12 GraphQL, 11 UI) and **29 framework
-self-tests**: 101 executions in all, since parameterized tests expand. They run
+**54 scenario tests** (31 REST, 12 GraphQL, 11 UI) and **35 framework
+self-tests**: 107 executions in all, since parameterized tests expand. They run
 in parallel in about 25 seconds. **12 defects** in the services under test are
 documented below; 8 of them are asserted as deliberately failing tests.
 
@@ -176,7 +176,7 @@ compiler enforces the boundary.
 | `api.booker` | Restful Booker clients and models; a token fetched once per run |
 | `api.graphql` | GraphQL request and response types, the client, and a `.graphql` file loader |
 | `reporting` | Masks credentials in everything written to the Allure report |
-| `ui` | Playwright lifecycle, a first-party-only network policy, exact-text matching |
+| `ui` | Playwright lifecycle, a first-party-only network policy, exact-text matching, retrying assertions (`Eventually`) |
 | `ui.pages` | Page objects and components: `DatePicker`, `ReactSelect`, dialogs |
 | `junit` | `@ApiTest`, `@UiTest`, `@RetryOnNetworkError`, page injection, failure capture |
 | `data` | Test data factory |
@@ -294,6 +294,19 @@ affinity. So every browser is closed once, after the run, and none survive it.
 JUnit's thread pool is also capped at four threads, because by default it may
 add up to 256 compensating threads when workers block, each of which would
 launch another browser.
+
+**Assertions that wait without hiding defects.** A UI check read once can catch
+the page mid-render. `Eventually`, written in-house rather than pulled in as a
+library, re-runs a hard or soft assertion block for up to five seconds. Each
+attempt reads the page afresh and a soft block collects afresh, so the report
+lists only the last attempt's failures. It retries only assertion failures and
+Playwright read errors; anything else is a bug in the test and fails at once. At
+the deadline the last error is rethrown unchanged, with a note of how many
+attempts were made, so a finding's defect report reads as before. A check that
+is wrong every time still fails, just later. Negative checks, such as "the
+dialog stays open", stay outside: they are bounded waits already, and an absence
+confirmed twice proves no more than once. Self-tests pin each of these rules, and
+disabling the assertion retry fails three of them.
 
 ### Reporting and secrets
 

@@ -376,6 +376,11 @@ row are grouped with `assertSoftly`, so one run reports every mismatch; a
 precondition that later checks depend on (such as the status code before
 reading the body) stays a hard assertion ahead of the soft block.
 
+> **As shipped:** UI assertions are wrapped in `Eventually.eventually(...)` or
+> `eventuallySoftly(...)`, which re-run the block, re-reading the page, for up
+> to 5 s. Only `AssertionError` and `PlaywrightException` are retried, the last
+> error is rethrown unchanged, and negative checks (bounded waits) stay outside.
+
 ## 7. Test inventory
 
 Total: 54 test methods (31 REST + 12 GraphQL + 11 UI); parameterized tests make the

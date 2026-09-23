@@ -21,6 +21,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 
+import static com.flamingo.qa.ui.Eventually.eventually;
+import static com.flamingo.qa.ui.Eventually.eventuallySoftly;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
@@ -46,10 +48,10 @@ class WebTablesTest {
 
         tables.addRecord(record);
 
-        assertThat(tables.records())
+        eventually(() -> assertThat(tables.records())
                 .hasSize(before.size() + 1)
                 .containsAll(before)
-                .endsWith(record);
+                .endsWith(record));
     }
 
     @UiTest
@@ -67,14 +69,16 @@ class WebTablesTest {
 
         tables.editRecord(original.getEmail(), edited);
 
-        List<WebTableRecord> after = tables.records();
-        // Hard, because subList below throws on a table that lost its rows.
-        assertThat(after).hasSameSizeAs(before);
-        assertSoftly(softly -> {
-            softly.assertThat(after).contains(edited).doesNotContain(original);
-            softly.assertThat(after.subList(1, after.size()))
-                    .as("rows other than the edited one are unchanged")
-                    .isEqualTo(before.subList(1, before.size()));
+        eventually(() -> {
+            List<WebTableRecord> after = tables.records();
+            // Hard, because subList below throws on a table that lost its rows.
+            assertThat(after).hasSameSizeAs(before);
+            assertSoftly(softly -> {
+                softly.assertThat(after).contains(edited).doesNotContain(original);
+                softly.assertThat(after.subList(1, after.size()))
+                        .as("rows other than the edited one are unchanged")
+                        .isEqualTo(before.subList(1, before.size()));
+            });
         });
     }
 
@@ -88,10 +92,10 @@ class WebTablesTest {
 
         tables.deleteRecord(doomed.getEmail());
 
-        assertThat(tables.records())
+        eventually(() -> assertThat(tables.records())
                 .hasSize(before.size() - 1)
                 .doesNotContain(doomed)
-                .containsExactlyElementsOf(before.subList(0, before.size() - 1));
+                .containsExactlyElementsOf(before.subList(0, before.size() - 1)));
     }
 
     @UiTest
@@ -104,9 +108,10 @@ class WebTablesTest {
         // cross-column matching and case-insensitivity.
         String term = target.getDepartment().toLowerCase();
 
-        List<WebTableRecord> matches = tables.search(term).records();
+        tables.search(term);
 
-        assertSoftly(softly -> {
+        eventuallySoftly(softly -> {
+            List<WebTableRecord> matches = tables.records();
             softly.assertThat(matches).contains(target);
             softly.assertThat(matches).allSatisfy(record ->
                     assertThat(record.cells()).anySatisfy(cell ->
@@ -121,10 +126,11 @@ class WebTablesTest {
         WebTablesPage tables = new WebTablesPage(page).open();
         List<WebTableRecord> all = tables.records();
 
-        assertSoftly(softly -> {
-            softly.assertThat(tables.search("no-such-record-zzz").records()).isEmpty();
-            softly.assertThat(tables.search("").records()).isEqualTo(all);
-        });
+        // Sequential rather than soft: the second check needs the first search undone.
+        tables.search("no-such-record-zzz");
+        eventually(() -> assertThat(tables.records()).as("no match").isEmpty());
+        tables.search("");
+        eventually(() -> assertThat(tables.records()).as("cleared").isEqualTo(all));
     }
 
     @Tag("ui")
@@ -147,8 +153,9 @@ class WebTablesTest {
         dialog.fill(invalid);
         dialog.submit();
 
-        assertSoftly(softly -> {
-            softly.assertThat(dialog.staysOpen()).as("%s: dialog stays open", scenario).isTrue();
+        // Hard and outside the retry: it is a bounded wait of its own.
+        assertThat(dialog.staysOpen()).as("%s: dialog stays open", scenario).isTrue();
+        eventuallySoftly(softly -> {
             softly.assertThat(dialog.invalidFields()).as("%s: flagged field", scenario).containsExactly(invalidInput);
             softly.assertThat(tables.records()).as("%s: nothing added", scenario).hasSize(rowsBefore);
         });
@@ -172,11 +179,14 @@ class WebTablesTest {
         tables.addRecord(TestDataFactory.randomWebTableRecord().toBuilder().firstName("Aaron").build());
         List<String> before = tables.firstNames();
 
-        List<String> after = tables.sortBy("First Name").firstNames();
+        tables.sortBy("First Name");
 
-        assertThat(after)
-                .as("clicking 'First Name' must sort rows ascending; order before the click was %s, "
-                        + "after it %s — the column header does not respond to clicks", before, after)
-                .isSortedAccordingTo(String.CASE_INSENSITIVE_ORDER);
+        eventually(() -> {
+            List<String> after = tables.firstNames();
+            assertThat(after)
+                    .as("clicking 'First Name' must sort rows ascending; order before the click was %s, "
+                            + "after it %s — the column header does not respond to clicks", before, after)
+                    .isSortedAccordingTo(String.CASE_INSENSITIVE_ORDER);
+        });
     }
 }

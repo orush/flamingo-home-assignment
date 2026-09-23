@@ -11,8 +11,8 @@ Always run with `clean`: without it, stale files in `target/test-classes`
 (including old `junit-platform.properties`) are silently loaded.
 
 ```bash
-./mvnw clean test -DexcludedGroups=finding   # the build's verdict: must be green (93 executions)
-./mvnw clean test -Dgroups=framework         # framework self-tests only (36 executions)
+./mvnw clean test -DexcludedGroups=finding   # the build's verdict: must be green (99 executions)
+./mvnw clean test -Dgroups=framework         # framework self-tests only (42 executions)
 ./mvnw clean test -Dgroups=finding           # defect report: 8 tests that FAIL BY DESIGN
 ./mvnw clean test -Dgroups=api               # REST + GraphQL
 ./mvnw clean test -Dgroups=ui                # DemoQA
@@ -111,6 +111,12 @@ delete probes before committing.
 - Negative UI checks (`staysOpen`, `confirmationAppears`) are bounded waits, and
   both outcomes must be exercised; a check never seen returning both values
   proves nothing.
+- UI assertions go through `Eventually.eventually(...)` /
+  `eventuallySoftly(...)`, which re-run the block for up to 5 s. The lambda must
+  read the page itself (`tables.records()` inside, not a list captured before),
+  and must not perform actions. Negative checks stay outside it as a hard
+  `assertThat`: they are bounded waits already. Only `AssertionError` and
+  `PlaywrightException` are retried, and the last error is rethrown unchanged.
 
 ## Build and tooling
 
@@ -155,7 +161,7 @@ and failure diagnostics only if the guard passes.
 
 When behaviour or counts change, update the README (counts, Findings table,
 Challenges), the spec and the plan's status note. Current totals: 54 scenario
-tests (31 REST, 12 GraphQL, 11 UI), 29 framework self-tests, 101 executions,
+tests (31 REST, 12 GraphQL, 11 UI), 35 framework self-tests, 107 executions,
 8 failing findings.
 
 ## Git

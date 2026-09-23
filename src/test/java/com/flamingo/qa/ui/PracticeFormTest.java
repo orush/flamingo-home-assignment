@@ -24,8 +24,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.flamingo.qa.ui.Eventually.eventually;
+import static com.flamingo.qa.ui.Eventually.eventuallySoftly;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("DemoQA")
 @Feature("Practice form")
@@ -46,7 +47,7 @@ class PracticeFormTest {
                 .fill(registration)
                 .submit();
 
-        assertSoftly(softly -> {
+        eventuallySoftly(softly -> {
             softly.assertThat(confirmation.title()).isEqualTo("Thanks for submitting the form");
             softly.assertThat(confirmation.values()).containsExactlyEntriesOf(expectedConfirmation(registration));
         });
@@ -61,7 +62,8 @@ class PracticeFormTest {
         PracticeFormPage form = new PracticeFormPage(page).open().fill(registration).attemptSubmit();
 
         assertThat(form.confirmationAppears()).isTrue();
-        assertThat(form.confirmation().values()).containsExactlyEntriesOf(expectedConfirmation(registration));
+        eventually(() -> assertThat(form.confirmation().values())
+                .containsExactlyEntriesOf(expectedConfirmation(registration)));
     }
 
     @UiTest
@@ -70,8 +72,9 @@ class PracticeFormTest {
     void rejectsEmptySubmission(Page page) {
         PracticeFormPage form = new PracticeFormPage(page).open().attemptSubmit();
 
-        assertSoftly(softly -> {
-            softly.assertThat(form.confirmationAppears()).isFalse();
+        // Hard and outside the retry: it is a bounded wait of its own.
+        assertThat(form.confirmationAppears()).isFalse();
+        eventuallySoftly(softly -> {
             softly.assertThat(form.showsValidationErrors()).isTrue();
             softly.assertThat(form.invalidFields())
                     .containsExactlyInAnyOrder("firstName", "lastName", "gender", "userNumber");
@@ -93,10 +96,11 @@ class PracticeFormTest {
 
         PracticeFormPage form = new PracticeFormPage(page).open().fill(invalid).attemptSubmit();
 
-        assertSoftly(softly -> {
-            softly.assertThat(form.confirmationAppears()).as("%s: no confirmation", scenario).isFalse();
-            softly.assertThat(form.invalidFields()).as("%s: flagged field", scenario).containsExactly(flaggedField);
-        });
+        // Hard and outside the retry: it is a bounded wait of its own.
+        assertThat(form.confirmationAppears()).as("%s: no confirmation", scenario).isFalse();
+        eventually(() -> assertThat(form.invalidFields())
+                .as("%s: flagged field", scenario)
+                .containsExactly(flaggedField));
     }
 
     /**
