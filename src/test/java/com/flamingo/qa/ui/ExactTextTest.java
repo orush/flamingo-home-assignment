@@ -1,10 +1,14 @@
 package com.flamingo.qa.ui;
 
+import io.qameta.allure.Epic;
+import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Epic("Framework")
+@Feature("UI plumbing")
 class ExactTextTest {
 
     @Test

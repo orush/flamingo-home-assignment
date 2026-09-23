@@ -1,5 +1,7 @@
 package com.flamingo.qa.config;
 
+import io.qameta.allure.Epic;
+import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -18,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * parallel scheduler.
  */
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
+@Epic("Framework")
+@Feature("Configuration")
 class ConfigLoaderTest {
 
     private static final String SCRATCH_KEY = "scratch.test.key";

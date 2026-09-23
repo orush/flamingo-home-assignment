@@ -1,0 +1,12 @@
+{
+  "plugins": {
+    "allure2": {
+      "options": {
+        "singleFile": true
+      }
+    },
+    "awesome": {
+      "enabled": false
+    }
+  }
+}

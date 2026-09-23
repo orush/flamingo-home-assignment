@@ -143,6 +143,9 @@
           <!-- Allure 3 report; the plugin provisions its own Node.js runtime. -->
           <reportVersion>3.17.0</reportVersion>
           <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
+          <!-- One self-contained HTML file: opens straight from a downloaded CI
+               artifact, where a multi-file report would need a web server. -->
+          <singleFile>true</singleFile>
         </configuration>
       </plugin>
 

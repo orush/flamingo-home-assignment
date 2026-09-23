@@ -1,5 +1,7 @@
 package com.flamingo.qa.junit;
 
+import io.qameta.allure.Epic;
+import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.testkit.engine.EngineTestKit;
@@ -23,6 +25,8 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass
  * inspecting what happened. The examples are static nested classes, which
  * Surefire does not run on its own, because several of them fail on purpose.
  */
+@Epic("Framework")
+@Feature("Retry")
 class RetryExtensionTest {
 
     private static Events run(Class<?> example) {

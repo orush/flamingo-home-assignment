@@ -11,8 +11,8 @@ import org.junit.jupiter.api.DisplayName;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Proves the UI plumbing itself: injection, isolation and network policy. */
-@Epic("DemoQA")
-@Feature("Framework")
+@Epic("Framework")
+@Feature("UI plumbing")
 class PlaywrightInjectionSmokeTest {
 
     @UiTest

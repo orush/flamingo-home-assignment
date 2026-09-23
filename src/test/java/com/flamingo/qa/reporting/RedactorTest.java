@@ -1,11 +1,15 @@
 package com.flamingo.qa.reporting;
 
+import io.qameta.allure.Epic;
+import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Secrets must never reach a report. These tests hold the redaction rules to that. */
+@Epic("Framework")
+@Feature("Report redaction")
 class RedactorTest {
 
     @Test

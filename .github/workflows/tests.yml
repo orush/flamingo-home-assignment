@@ -1,0 +1,138 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only token: the workflow needs nothing more.
+permissions:
+  contents: read
+
+# A newer push supersedes an older run on the same ref. Cancelling the old one
+# also spares the public services under test a redundant load.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Create .env from repository secrets
+        env:
+          BOOKER_BASE_URL: ${{ secrets.BOOKER_BASE_URL }}
+          BOOKER_USERNAME: ${{ secrets.BOOKER_USERNAME }}
+          BOOKER_PASSWORD: ${{ secrets.BOOKER_PASSWORD }}
+          GRAPHQL_ENDPOINT: ${{ secrets.GRAPHQL_ENDPOINT }}
+          UI_BASE_URL: ${{ secrets.UI_BASE_URL }}
+        # Secrets arrive as environment variables rather than as ${{ }} text
+        # spliced into the script, so no value can alter the script itself.
+        # Nothing here prints them.
+        run: |
+          keys="BOOKER_BASE_URL BOOKER_USERNAME BOOKER_PASSWORD GRAPHQL_ENDPOINT UI_BASE_URL"
+          for key in $keys; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Repository secret $key is not set. Secrets are not passed to pull requests from forks."
+              exit 1
+            fi
+          done
+          umask 077
+          { for key in $keys; do printf '%s=%s\n' "$key" "${!key}"; done; echo "UI_HEADLESS=true"; } > .env
+
+      - name: Install Chromium for Playwright
+        run: >-
+          ./mvnw -B -q compile exec:java
+          -Dexec.mainClass=com.microsoft.playwright.CLI
+          -Dexec.args="install --with-deps chromium"
+
+      # The build's verdict: everything except the known-defect tests.
+      - name: Run the suite
+        run: ./mvnw -B clean test -DexcludedGroups=finding
+
+      - name: Keep the suite's Surefire reports
+        if: always()
+        run: if [ -d target/surefire-reports ]; then mv target/surefire-reports target/surefire-reports-gating; fi
+
+      # Findings assert what a correct service would do, so they fail by design.
+      # They never gate the build; their failures are the defect report.
+      - name: Run the findings (defect report)
+        if: always()
+        continue-on-error: true
+        run: ./mvnw -B test -Dgroups=finding
+
+      - name: Keep the findings' Surefire reports
+        if: always()
+        run: if [ -d target/surefire-reports ]; then mv target/surefire-reports target/surefire-reports-findings; fi
+
+      - name: Generate the Allure report
+        if: always()
+        env:
+          # Only the allure2 report plugin can turn off its Google Analytics tag.
+          ALLURE_NO_ANALYTICS: 'true'
+        run: ./mvnw -B allure:report
+
+      - name: Summarise the run
+        if: always()
+        run: python3 .github/scripts/summarise_results.py target/allure-results >> "$GITHUB_STEP_SUMMARY"
+
+      # This repository is public, so artifacts are too. Uploads happen only if
+      # this check finds no credential in anything about to be uploaded.
+      - name: Check artifacts for credentials
+        id: secret-check
+        if: always()
+        env:
+          BOOKER_USERNAME: ${{ secrets.BOOKER_USERNAME }}
+          BOOKER_PASSWORD: ${{ secrets.BOOKER_PASSWORD }}
+        run: >-
+          python3 .github/scripts/check_no_secrets.py
+          target/allure-results
+          target/site/allure-maven-plugin
+          target/surefire-reports-gating
+          target/surefire-reports-findings
+
+      - name: Upload the Allure report
+        if: always() && steps.secret-check.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: allure-report
+          path: target/site/allure-maven-plugin/index.html
+          retention-days: 14
+
+      - name: Upload raw results and Surefire reports
+        if: always() && steps.secret-check.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: |
+            target/allure-results
+            target/surefire-reports-gating
+            target/surefire-reports-findings
+          retention-days: 14
+
+      - name: Upload failure screenshots and traces
+        if: always() && steps.secret-check.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: failure-diagnostics
+          path: |
+            target/screenshots
+            target/traces
+          if-no-files-found: ignore
+          retention-days: 14
