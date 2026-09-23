@@ -14,7 +14,7 @@ home assignment. It covers three targets:
 
 The assignment grades framework architecture at 40%, code quality at 30%, test
 design at 20% and documentation at 10%. The design optimises for that weighting:
-50 well-chosen tests on top of a framework whose structure is legible
+54 well-chosen tests on top of a framework whose structure is legible
 without reading any test body.
 
 Scope is the **full bonus build**: every "nice to have" in the brief (Allure,
@@ -96,7 +96,23 @@ One deviation from the specification: field errors carry `path` under
 `${UI_BASE_URL}/automation-practice-form` and `/webtables` both return 200
 and are **client-rendered SPAs** — the served HTML body is `<div id="root"></div>`.
 Selectors must therefore be confirmed against a live browser during
-implementation, not inferred from served markup.
+implementation, not inferred from served markup. Doing so showed:
+
+- **The web table has been rebuilt.** It is now a plain `<table>` with
+  `<tbody><tr><td>` rows and `<th>` headers, not the react-table `<div>` grid
+  with blank padding rows that older DemoQA tests target. Add, search and the
+  per-row edit/delete ids are unchanged.
+- **Sorting is gone.** No column header has a click handler (cursor `auto`,
+  no React `onClick`), and repeated clicks on three columns never reorder the
+  rows. Recorded as a finding, since the brief requires sorting validation.
+- **Search** is case-insensitive and matches any column.
+- **Validation is native HTML5.** The web table dialog requires every field and
+  pattern-checks email, age and salary. The practice form requires first name,
+  last name, gender and a 10-digit mobile; an empty submit flags exactly those.
+- **The date picker steals focus.** About 10 ms after a day is picked, it moves
+  focus back to its own input, so a field focused in that window loses focus —
+  a react-select then clears its text. Measured, and reproducible every time.
+- **The confirmation zero-pads the day:** `05 March,1985` (`dd MMMM,yyyy`).
 
 ## 3. Architecture
 
@@ -357,7 +373,7 @@ Every assertion lives in the test and uses AssertJ.
 
 ## 7. Test inventory
 
-Total: 50 test methods (31 REST + 12 GraphQL + 7 UI); parameterized tests make the
+Total: 54 test methods (31 REST + 12 GraphQL + 11 UI); parameterized tests make the
 execution count higher. The brief's minimums are
 3 API CRUD, 5 GraphQL and 2 UI, so each area clears its minimum with margin
 without padding. The data-driven create test is one method producing several
@@ -456,17 +472,21 @@ than being normalised into green.
 | Invalid variables (parameterized, 3 cases) | 400 for wrong type, omitted required variable, negative page size |
 | FINDING: field error `path` not top-level | Spec requires a top-level `path`; Hygraph nests it under `extensions` |
 
-### UI — DemoQA (7)
+### UI — DemoQA (11)
 
 | Test | Asserts |
 | --- | --- |
-| Submit complete registration form | Success modal rows match submitted values (upload, datepicker, React-Select dropdowns, radio, checkboxes) |
-| Submit form with required fields empty | No modal; required fields flagged invalid |
-| Add record to web table | New row present with entered values |
-| Edit existing record | Row reflects updated values |
-| Delete record | Row absent; row count decremented |
-| Search filters rows | Only matching rows remain |
-| Column sorting | Resulting order matches expected ordering |
+| Add a record | Appended with exactly the entered values; existing rows unchanged |
+| Edit an existing record | That row updated; every other row unchanged |
+| Delete an existing record | Exactly that row removed |
+| Search narrows to matches | Case-insensitive, any column; every visible row matches |
+| Search with no match | Table empties; clearing the search restores every row |
+| Invalid record (parameterized, 4 cases) | Dialog stays open, exactly the bad field flagged, nothing added |
+| FINDING: clicking a header sorts the rows | Row order must be ascending after a click; it never changes |
+| Complete registration | Every field, including upload, date and dropdowns, echoed exactly in the confirmation |
+| Required fields only | Accepted; optional values blank; date defaults to today |
+| Empty submission | No confirmation; exactly first name, last name, gender and mobile flagged |
+| Invalid field (parameterized, 4 cases) | No confirmation; exactly the spoiled field flagged |
 
 ## 8. Cross-cutting concerns
 

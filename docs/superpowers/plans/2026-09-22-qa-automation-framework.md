@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 50 scenario tests (plus 21 framework self-tests) on reusable infrastructure.
+**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 54 scenario tests (plus 24 framework self-tests) on reusable infrastructure.
 
 **Architecture:** Single Maven module. All reusable framework code lives in `src/main/java` (config, REST/GraphQL clients, page objects, JUnit extensions); `src/test/java` holds only test scenarios. Test wiring is by composition — `@ApiTest` / `@UiTest` meta-annotations plus a `ParameterResolver` that injects Playwright `Page` objects — rather than inheritance.
 
@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-qa-automation-framework-design.md`
 
-> **Status:** Tasks 1–7 are implemented. Where the shipped code differs from the
+> **Status:** Tasks 1–9 are implemented. Where the shipped code differs from the
 > code blocks in those tasks, **the code is the source of truth** — each
 > deviation was driven by live behaviour of the services and is explained in its
 > commit message and in the design doc.
@@ -3342,8 +3342,8 @@ allure.link.issue.pattern=https://github.com/orush/flamingo-home-assignment/issu
 - [ ] **Step 3: Run the full suite in parallel**
 
 Run: `./mvnw clean test`
-Expected, with findings excluded (`-DexcludedGroups=finding`): 64 test methods
-pass (43 scenario + 21 framework), 0 failures. Wall-clock should be noticeably shorter than serial.
+Expected, with findings excluded (`-DexcludedGroups=finding`): 70 test methods
+pass (46 scenario + 24 framework), 0 failures. Wall-clock should be noticeably shorter than serial.
 
 If UI tests now fail intermittently, the most likely cause is `PlaywrightFactory`
 state leaking across threads. Verify each thread gets its own `Playwright` —
@@ -3367,8 +3367,8 @@ attachments and that GraphQL tests carry query and variables attachments.
 ```
 
 Expected: 43 methods tagged `api` (48 executions — parameterized tests expand),
-of which the 7 tagged `finding` fail by design; and 9 methods tagged `ui` (the 7
-scenarios plus the two framework smoke tests).
+of which 7 are tagged `finding` and fail by design; and 13 methods tagged `ui` (the
+11 scenarios plus the two framework smoke tests), of which 1 is a finding.
 
 NOTE: `ConfigLoaderTest` and `RetryExtensionTest` carry no tag, so they run under
 `./mvnw clean test` but under neither group filter. That is intended — they test
@@ -3689,8 +3689,8 @@ writes to `.env` before the test step.
 
 ## Test Strategy
 
-50 scenario test methods: 31 against Restful Booker, 12 against Hygraph GraphQL,
-7 against DemoQA. A further 21 tests cover the framework itself (config resolution, the
+54 scenario test methods: 31 against Restful Booker, 12 against Hygraph GraphQL,
+11 against DemoQA. A further 24 tests cover the framework itself (config resolution, the
 retry extension, Playwright injection), for 32 in total.
 The brief's minimums are 3, 5 and 2 — each area clears its minimum with margin,
 without padding, because the brief asks for quality over quantity and weights
@@ -3802,12 +3802,41 @@ the stock REST Assured filter was replaced with one that masks credentials in
 bodies, headers and cookies. A full run now leaves no password, username or
 token anywhere in the output.
 
-### The date picker
+### Selectors written for a page that no longer exists
 
-DemoQA uses `react-datepicker`, where typing into the field is unreliable. The
-page object drives the month and year `<select>` elements and then clicks the day
-cell, whose class is zero-padded to three digits (`--015`) and needs a
-`:not(--outside-month)` guard so the click cannot land on an adjacent month.
+The plan listed DemoQA selectors from the familiar react-table version of the
+web tables page — `.rt-tbody .rt-tr-group` rows padded with blank ones. The live
+page has since been rebuilt as a plain HTML table with no padding rows. Because
+each UI task began by dumping the real DOM, this surfaced before any page object
+was written. The same reconnaissance found that sorting had been removed
+entirely, which is now a finding rather than a mysteriously failing test.
+
+### A date picker that steals focus
+
+Filling the form end to end left Subjects empty — no error, the text simply
+vanished. The failure screenshot held the clue: the date input still showed a
+focus ring. Recording focus events in the page showed the sequence: the calendar
+closes, the test focuses Subjects, and about 10 ms later the date picker moves
+focus back to its own input. React-select clears its text on blur. `DatePicker`
+now waits for that focus return — a wait for a specific, observed event, not a
+sleep — and fails with an explanation if the widget ever stops doing it.
+
+### A regex that meant something else in the browser
+
+Every practice-form test that selected a radio button timed out. The filter used
+`Pattern.quote(text)`, which emits Java-only `\Q…\E` quoting. Playwright runs
+text filters in the browser's JavaScript engine, which reads `\Q` as a plain
+`Q`, so a filter for "Female" became `/^QFemaleE$/` and matched nothing.
+`ExactText` escapes metacharacters individually instead, with a unit test that
+stops `\Q…\E` from ever coming back.
+
+### Driving the date picker
+
+The brief asks for a date to be selected *from the date picker*, so the page
+object uses the calendar rather than typing into the field. It sets the month and
+year `<select>` elements, then clicks the day cell, whose class is zero-padded to
+three digits (`--005`) and needs a `:not(--outside-month)` guard so the click
+cannot land on the same number in an adjacent month.
 
 ### Keeping endpoints and credentials out of the repository
 
@@ -3857,6 +3886,7 @@ normalises the defect and quietly bakes it into the expected contract.
 | 9 | Restful Booker | Low | `DELETE /booking/{id}` answers a successful delete with `201 Created` rather than `200`/`204`. |
 | 10 | Restful Booker | Low | `POST /auth` reports bad credentials as `200` with `{"reason":"Bad credentials"}` instead of `401`. |
 | 11 | Hygraph | Low | Field errors carry `path` under `extensions` instead of as the top-level key the GraphQL specification requires, so spec-following clients cannot attach an error to the field that failed. |
+| 12 | DemoQA | Normal | The web table cannot be sorted. No column header responds to clicks, so the brief's "sorting validation" scenario fails. |
 
 Findings 1-3 are documented behaviour of this service, so they are design
 defects rather than regressions. Enforcement on `PUT`, `PATCH` and `DELETE` is
@@ -3914,10 +3944,10 @@ git push
 
 ## Final verification
 
-- [ ] `./mvnw clean test -DexcludedGroups=finding` passes: 64 methods, 0 failures
-- [ ] `./mvnw test -Dgroups="finding"` runs 7 methods, all failing with defect-report messages
+- [ ] `./mvnw clean test -DexcludedGroups=finding` passes: 70 methods, 0 failures
+- [ ] `./mvnw test -Dgroups="finding"` runs 8 methods, all failing with defect-report messages
 - [ ] `./mvnw test -Dgroups="api"` runs 43 tagged methods / 48 executions
-- [ ] `./mvnw test -Dgroups="ui"` runs 9 tagged methods
+- [ ] `./mvnw test -Dgroups="ui"` runs 13 tagged methods
 - [ ] A deliberately failed UI test produces a screenshot **and** a trace
 - [ ] `./mvnw allure:report` generates a report with request/response attachments
 - [ ] GitHub Actions run is green
