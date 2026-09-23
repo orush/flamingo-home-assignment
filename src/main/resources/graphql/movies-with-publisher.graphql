@@ -1,0 +1,16 @@
+# A fragment for the movie's own fields, plus a nested hop to a related type
+# (Movie -> User via publishedBy).
+fragment MovieSummary on Movie {
+  id
+  title
+}
+
+query MoviesWithPublisher($first: Int!) {
+  movies(first: $first, orderBy: id_ASC) {
+    ...MovieSummary
+    publishedBy {
+      id
+      name
+    }
+  }
+}

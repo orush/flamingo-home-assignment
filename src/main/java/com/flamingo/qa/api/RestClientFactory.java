@@ -2,21 +2,22 @@ package com.flamingo.qa.api;
 
 import com.flamingo.qa.config.Config;
 import io.qameta.allure.restassured.AllureRestAssured;
-import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.filter.log.LogDetail;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 
 import static io.restassured.RestAssured.given;
 
-/** Builds the shared request specifications. */
+/**
+ * Builds the shared request specifications.
+ *
+ * <p>Specs are built on demand rather than held in static fields, so each one
+ * resolves only the configuration it needs: a GraphQL-only run does not require
+ * the Restful Booker settings to be present.
+ */
 public final class RestClientFactory {
-
-    static {
-        // Quiet on green, fully diagnosable on red.
-        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails(LogDetail.ALL);
-    }
 
     /**
      * Accept is set as a literal string, not {@code ContentType.JSON}.
@@ -29,17 +30,33 @@ public final class RestClientFactory {
      */
     private static final String ACCEPT_JSON = "application/json";
 
-    private static final RequestSpecification BOOKER_SPEC = new RequestSpecBuilder()
-            .setBaseUri(Config.bookerBaseUrl())
-            .setContentType(ContentType.JSON)
-            .setAccept(ACCEPT_JSON)
-            .addFilter(new AllureRestAssured())
-            .build();
+    /**
+     * Serialise request bodies with the project's own mapper, so the rules in
+     * {@link Json} apply to what is sent as well as to what is read back.
+     * Without this, REST Assured builds a private mapper of its own.
+     */
+    private static final RestAssuredConfig CONFIG = RestAssuredConfig.config()
+            .objectMapperConfig(ObjectMapperConfig.objectMapperConfig()
+                    .jackson2ObjectMapperFactory((type, charset) -> Json.mapper()));
 
     private RestClientFactory() {
     }
 
     public static RequestSpecification booker() {
-        return given().spec(BOOKER_SPEC);
+        return jsonSpec(Config.bookerBaseUrl());
+    }
+
+    public static RequestSpecification graphQl() {
+        return jsonSpec(Config.graphQlEndpoint());
+    }
+
+    private static RequestSpecification jsonSpec(String baseUri) {
+        return given().spec(new RequestSpecBuilder()
+                .setConfig(CONFIG)
+                .setBaseUri(baseUri)
+                .setContentType(ContentType.JSON)
+                .setAccept(ACCEPT_JSON)
+                .addFilter(new AllureRestAssured())
+                .build());
     }
 }

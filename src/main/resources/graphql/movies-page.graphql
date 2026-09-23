@@ -1,0 +1,16 @@
+# One page of movies plus the size of the whole collection.
+#
+# orderBy is explicit on purpose: skip/first only describe a well-defined page
+# over a total order. Relying on the server's default order happens to work
+# today but is not guaranteed.
+query MoviesPage($first: Int!, $skip: Int!) {
+  movies(first: $first, skip: $skip, orderBy: id_ASC) {
+    id
+    title
+  }
+  moviesConnection {
+    aggregate {
+      count
+    }
+  }
+}
