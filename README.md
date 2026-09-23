@@ -352,9 +352,14 @@ stop reporting a Jackson 2/3 ambiguity that did not exist.
 Every CI run publishes three artifacts: `allure-report` (a single HTML file),
 `test-results` (raw Allure results and Surefire reports) and
 `failure-diagnostics` (screenshots and Playwright traces, which always include
-the failing sorting finding). The run page summarises the suite and lists each
-finding with its defect message. Open
+the failing sorting finding). For viewers signed in to GitHub, the run page
+also summarises the suite and lists each finding with its defect message. Open
 [the latest run](https://github.com/orush/flamingo-home-assignment/actions/workflows/tests.yml).
+
+A CI run — green, with no warnings or errors. The findings run in a separate,
+non-gating step:
+
+![GitHub Actions run: success, three artifacts](docs/images/ci-run.png)
 
 The Allure report produced by CI:
 
