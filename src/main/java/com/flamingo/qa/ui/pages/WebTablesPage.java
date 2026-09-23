@@ -1,6 +1,7 @@
 package com.flamingo.qa.ui.pages;
 
 import io.qameta.allure.Step;
+import com.flamingo.qa.ui.ExactText;
 import com.flamingo.qa.ui.model.WebTableRecord;
 import com.flamingo.qa.ui.pages.components.RegistrationDialog;
 import com.microsoft.playwright.Locator;
@@ -14,6 +15,8 @@ import java.util.stream.Collectors;
 public class WebTablesPage extends BasePage {
 
     private static final String ROWS = "table tbody tr";
+    private static final String HEADERS = "table thead th";
+    private static final String EMAIL = "Email";
 
     public WebTablesPage(Page page) {
         super(page);
@@ -26,10 +29,12 @@ public class WebTablesPage extends BasePage {
         return this;
     }
 
-    /** Every row currently rendered, in display order. */
+    /** Every row currently rendered, in display order, read from its visible cells. */
     public List<WebTableRecord> records() {
         return page.locator(ROWS).all().stream()
-                .map(row -> WebTableRecord.fromCells(row.locator("td").allInnerTexts()))
+                .map(row -> WebTableRecord.fromCells(row.locator("td")
+                        .filter(new Locator.FilterOptions().setVisible(true))
+                        .allInnerTexts()))
                 .collect(Collectors.toList());
     }
 
@@ -87,7 +92,26 @@ public class WebTablesPage extends BasePage {
         return this;
     }
 
+    /** The row whose Email cell is exactly {@code email}; other columns are not searched. */
     private Locator rowFor(String email) {
-        return page.locator(ROWS).filter(new Locator.FilterOptions().setHasText(email));
+        return rowWhere(EMAIL, email);
+    }
+
+    private Locator rowWhere(String columnHeader, String value) {
+        Locator cell = page.locator("td:nth-child(" + (columnIndex(columnHeader) + 1) + ")")
+                .filter(new Locator.FilterOptions().setHasText(ExactText.of(value)));
+        return page.locator(ROWS).filter(new Locator.FilterOptions().setHas(cell));
+    }
+
+    /** Zero-based position of the column under {@code columnHeader}, read from the rendered header. */
+    private int columnIndex(String columnHeader) {
+        List<String> headers = page.locator(HEADERS).allInnerTexts().stream()
+                .map(String::trim)
+                .collect(Collectors.toList());
+        int index = headers.indexOf(columnHeader);
+        if (index < 0) {
+            throw new IllegalStateException("No column '" + columnHeader + "' in " + headers);
+        }
+        return index;
     }
 }

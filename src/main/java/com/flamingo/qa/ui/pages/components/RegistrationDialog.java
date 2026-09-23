@@ -68,9 +68,14 @@ public class RegistrationDialog {
         }
     }
 
-    /** Ids of the inputs the browser's form validation currently flags as invalid. */
+    /**
+     * Ids of the visible inputs the browser's form validation currently flags as
+     * invalid. Hidden inputs are skipped: a user cannot see or correct them.
+     */
     @SuppressWarnings("unchecked")
     public List<String> invalidFields() {
-        return (List<String>) dialog.locator("input:invalid").evaluateAll("inputs => inputs.map(i => i.id)");
+        return (List<String>) dialog.locator("input:invalid")
+                .filter(new Locator.FilterOptions().setVisible(true))
+                .evaluateAll("inputs => inputs.map(i => i.id)");
     }
 }
