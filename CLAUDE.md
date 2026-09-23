@@ -13,7 +13,7 @@ Always run with `clean`: without it, stale files in `target/test-classes`
 ```bash
 ./mvnw clean test -DexcludedGroups=finding   # the build's verdict: must be green (99 executions)
 ./mvnw clean test -Dgroups=framework         # framework self-tests only (42 executions)
-./mvnw clean test -Dgroups=finding           # defect report: 8 tests that FAIL BY DESIGN
+./mvnw clean test -Dgroups=finding           # defect report: 9 tests that FAIL BY DESIGN
 ./mvnw clean test -Dgroups=api               # REST + GraphQL
 ./mvnw clean test -Dgroups=ui                # DemoQA
 ./mvnw clean test -Dtest=ClassName           # one class
@@ -160,9 +160,9 @@ and failure diagnostics only if the guard passes.
 ## Keep in sync
 
 When behaviour or counts change, update the README (counts, Findings table,
-Challenges), the spec and the plan's status note. Current totals: 54 scenario
-tests (31 REST, 12 GraphQL, 11 UI), 35 framework self-tests, 107 executions,
-8 failing findings.
+Challenges), the spec and the plan's status note. Current totals: 55 scenario
+tests (31 REST, 12 GraphQL, 12 UI), 35 framework self-tests, 108 executions,
+9 failing findings.
 
 ## Git
 

@@ -8,10 +8,10 @@ the Hygraph GraphQL example API and DemoQA — built on JUnit 5, REST Assured,
 Playwright for Java, AssertJ and Jackson, with Allure reporting and GitHub
 Actions CI.
 
-**54 scenario tests** (31 REST, 12 GraphQL, 11 UI) and **35 framework
-self-tests**: 107 executions in all, since parameterized tests expand. They run
-in parallel in about 25 seconds. **12 defects** in the services under test are
-documented below; 8 of them are asserted as deliberately failing tests.
+**55 scenario tests** (31 REST, 12 GraphQL, 12 UI) and **35 framework
+self-tests**: 108 executions in all, since parameterized tests expand. They run
+in parallel in about 25 seconds. **13 defects** in the services under test are
+documented below; 9 of them are asserted as deliberately failing tests.
 
 ## Prerequisites
 
@@ -98,7 +98,7 @@ ALLURE_NO_ANALYTICS=true ./mvnw allure:report   # target/site/allure-maven-plugi
 `ALLURE_NO_ANALYTICS` stops the report from loading a Google Analytics tag.
 
 A plain `./mvnw clean test` includes the findings, so it ends in `BUILD FAILURE`
-by design, reporting the 8 defects. Use `-DexcludedGroups="finding"` for a
+by design, reporting the 9 defects. Use `-DexcludedGroups="finding"` for a
 pass/fail verdict on the suite itself.
 
 ## Test Strategy
@@ -113,7 +113,7 @@ pass/fail verdict on the suite itself.
   defect report. Findings carry `@Tag("finding")`, so the build can gate on
   everything else. Asserting the buggy behaviour instead, to keep the suite
   green, would quietly bake the defect into the expected contract.
-- **Negative paths get equal weight.** Over half the scenario tests, 33 of 54,
+- **Negative paths get equal weight.** Over half the scenario tests, 33 of 55,
   exercise failure modes: authorization for every endpoint (no token, valid token, forged
   token), malformed input, unknown resources, and every GraphQL error shape.
 - **Independent tests.** Each test seeds its own data and asserts only on it,
@@ -133,7 +133,7 @@ pass/fail verdict on the suite itself.
 | Restful Booker | auth, full CRUD including `PATCH`, an authorization matrix over every endpoint, unknown resources, malformed requests, input validation |
 | Hygraph GraphQL | a page-size limit, paging the whole collection with no gaps or overlaps, fetch by id, variables that are provably never interpolated, a fragment with a nested `Movie → publishedBy → name` hop, and every error shape |
 | DemoQA web tables | add, edit, delete, search, field validation, sorting |
-| DemoQA practice form | a complete submission (upload, date picker, dropdowns), a required-fields-only submission, an empty submission, field validation |
+| DemoQA practice form | a complete submission (upload, date picker, dropdowns), a required-fields-only submission, an empty submission, field validation, closing the confirmation |
 
 ## Findings
 
@@ -153,6 +153,7 @@ Defects in the systems under test, found by the suite.
 | 10 | Restful Booker | Low | Bad credentials return 200 with `{"reason":"Bad credentials"}`, not 401. | pinned |
 | 11 | Hygraph | Low | Field errors carry `path` under `extensions`, not as the top-level key the GraphQL specification requires. | fails |
 | 12 | DemoQA | Normal | The web table cannot be sorted: no column header responds to clicks, so the brief's sorting scenario fails. | fails |
+| 13 | DemoQA | Normal | The practice form confirmation's Close button does nothing: the dialog and its backdrop stay over the form, and only Escape closes it. | fails |
 
 *fails* — the test asserts correct behaviour and fails, so the defect is
 reported on every run. If the service is fixed, the test starts passing.

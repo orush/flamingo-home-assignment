@@ -1,14 +1,20 @@
 package com.flamingo.qa.ui.pages.components;
 
+import io.qameta.allure.Step;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.WaitForSelectorState;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** The "Thanks for submitting the form" confirmation and its label/value table. */
 public class SubmissionModal {
+
+    /** Long enough for the dialog's fade-out to finish if it were going to close. */
+    private static final double CLOSE_SETTLE_MS = 1_500;
 
     private final Locator dialog;
 
@@ -19,6 +25,28 @@ public class SubmissionModal {
     public SubmissionModal waitUntilVisible() {
         dialog.waitFor();
         return this;
+    }
+
+    @Step("Close the confirmation")
+    public void close() {
+        dialog.locator("#closeLargeModal").click();
+    }
+
+    /**
+     * True if the confirmation is still open once it has had time to close.
+     * Checking visibility straight after a click would pass even for a dialog
+     * that is about to fade out, so this waits for it to disappear and reports
+     * whether it did not.
+     */
+    public boolean staysOpen() {
+        try {
+            dialog.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.DETACHED)
+                    .setTimeout(CLOSE_SETTLE_MS));
+            return false;
+        } catch (TimeoutError stillOpen) {
+            return true;
+        }
     }
 
     public String title() {

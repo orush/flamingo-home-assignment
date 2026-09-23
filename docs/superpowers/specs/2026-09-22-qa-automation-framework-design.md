@@ -14,7 +14,7 @@ home assignment. It covers three targets:
 
 The assignment grades framework architecture at 40%, code quality at 30%, test
 design at 20% and documentation at 10%. The design optimises for that weighting:
-54 well-chosen tests on top of a framework whose structure is legible
+55 well-chosen tests on top of a framework whose structure is legible
 without reading any test body.
 
 Scope is the **full bonus build**: every "nice to have" in the brief (Allure,
@@ -113,6 +113,9 @@ implementation, not inferred from served markup. Doing so showed:
   focus back to its own input, so a field focused in that window loses focus —
   a react-select then clears its text. Measured, and reproducible every time.
 - **The confirmation zero-pads the day:** `05 March,1985` (`dd MMMM,yyyy`).
+- **The confirmation's Close button does nothing.** It is visible, enabled and
+  receives the click, but the dialog and its backdrop stay; only Escape closes
+  it. Recorded as a finding.
 
 ## 3. Architecture
 
@@ -383,7 +386,7 @@ reading the body) stays a hard assertion ahead of the soft block.
 
 ## 7. Test inventory
 
-Total: 54 test methods (31 REST + 12 GraphQL + 11 UI); parameterized tests make the
+Total: 55 test methods (31 REST + 12 GraphQL + 12 UI); parameterized tests make the
 execution count higher. The brief's minimums are
 3 API CRUD, 5 GraphQL and 2 UI, so each area clears its minimum with margin
 without padding. The data-driven create test is one method producing several
@@ -482,7 +485,7 @@ than being normalised into green.
 | Invalid variables (parameterized, 3 cases) | 400 for wrong type, omitted required variable, negative page size |
 | FINDING: field error `path` not top-level | Spec requires a top-level `path`; Hygraph nests it under `extensions` |
 
-### UI — DemoQA (11)
+### UI — DemoQA (12)
 
 | Test | Asserts |
 | --- | --- |
@@ -497,6 +500,7 @@ than being normalised into green.
 | Required fields only | Accepted; optional values blank; date defaults to today |
 | Empty submission | No confirmation; exactly first name, last name, gender and mobile flagged |
 | Invalid field (parameterized, 4 cases) | No confirmation; exactly the spoiled field flagged |
+| FINDING: Close closes the confirmation | Dialog must be gone after Close is clicked; it stays open |
 
 ## 8. Cross-cutting concerns
 
