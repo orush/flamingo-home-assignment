@@ -28,11 +28,14 @@ class RestClientTimeoutTest {
     void silentServerTimesOut() throws Exception {
         // The OS accepts the connection into the listen backlog; nothing ever replies.
         try (ServerSocket silent = new ServerSocket(0)) {
+            String url = "http://localhost:" + silent.getLocalPort();
+            // Untimed warm-up: REST Assured's first request loads Groovy and is
+            // woven by AspectJ, which took up to 5 s on a busy CI runner and would
+            // otherwise be measured as if it were the timeout.
+            catchThrowable(() -> RestClientFactory.jsonSpec(url, 500).get("/"));
             long start = System.nanoTime();
 
-            Throwable thrown = catchThrowable(() -> RestClientFactory
-                    .jsonSpec("http://localhost:" + silent.getLocalPort(), 500)
-                    .get("/"));
+            Throwable thrown = catchThrowable(() -> RestClientFactory.jsonSpec(url, 500).get("/"));
 
             long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
             assertSoftly(softly -> {
