@@ -16,6 +16,9 @@ allure-results/
 allure-report/
 test-output/
 
+# Private Node.js + Allure 3 runtime provisioned by allure-maven
+.allure/
+
 # Local configuration and credentials — never commit
 .env
 .env.local

@@ -35,28 +35,38 @@
   credentials have no built-in default; a missing one fails fast pointing at
   `.env.example`. Only `ui.browser`, `ui.headless` and `http.timeout.ms` have defaults.
 
-### Pinned versions (resolved from Maven Central, stable only)
+### Pinned versions
+
+Resolved from Maven Central's authoritative `maven-metadata.xml`, stable releases
+only. (The first pass used the Maven Central *search index*, which proved to be
+over a year stale; every pin below was re-verified on 2026-09-23.)
 
 | Artifact | Version |
 | --- | --- |
-| `org.junit.jupiter:junit-jupiter` | 5.12.2 |
-| `org.junit.platform:junit-platform-launcher` | 1.12.2 |
-| `io.rest-assured:rest-assured` | 5.5.2 |
-| `com.microsoft.playwright:playwright` | 1.52.0 |
-| `org.assertj:assertj-core` | 3.27.3 |
-| `com.fasterxml.jackson.core:jackson-databind` | 2.19.0 |
-| `com.fasterxml.jackson.datatype:jackson-datatype-jsr310` | 2.19.0 |
-| `org.projectlombok:lombok` | 1.18.38 |
+| `org.junit.jupiter:junit-jupiter` | 5.14.4 (latest JUnit 5, as the brief requires) |
+| `org.junit.platform:junit-platform-launcher` | 1.14.4 |
+| `io.rest-assured:rest-assured` | 6.0.1 |
+| `com.microsoft.playwright:playwright` | 1.63.0 |
+| `org.assertj:assertj-core` | 3.27.7 |
+| `com.fasterxml.jackson.core:jackson-databind` | 2.22.3 |
+| `com.fasterxml.jackson.datatype:jackson-datatype-jsr310` | 2.22.3 |
+| `org.projectlombok:lombok` | 1.18.48 |
 | `io.github.cdimascio:dotenv-java` | 3.2.0 |
-| `io.qameta.allure:allure-junit5` | 2.29.1 |
-| `io.qameta.allure:allure-rest-assured` | 2.29.1 |
-| `org.aspectj:aspectjweaver` | 1.9.24 |
-| `maven-compiler-plugin` | 3.15.0 |
-| `maven-surefire-plugin` | 3.5.6 |
-| `maven-surefire-report-plugin` | 3.5.6 |
-| `io.qameta.allure:allure-maven` | 2.15.2 |
-| `org.codehaus.mojo:exec-maven-plugin` | 3.5.0 |
+| `io.qameta.allure:allure-jupiter` | 2.35.5 (formerly `allure-junit5`) |
+| `io.qameta.allure:allure-rest-assured` | 2.35.5 |
+| `org.aspectj:aspectjweaver` | 1.9.25.1 (1.9.24 cannot read JDK 26 class files) |
+| `maven-compiler-plugin` | 3.16.0 |
+| `maven-surefire-plugin` / `maven-surefire-report-plugin` | 3.6.0 |
+| `io.qameta.allure:allure-maven` | 3.1.0, generating the Allure 3 (3.17.0) report |
+| `org.codehaus.mojo:exec-maven-plugin` | 3.6.4 |
 | `maven-wrapper-plugin` | 3.3.4 |
+
+Notes:
+- `allure-maven` 3 provisions a private Node.js runtime and the Allure 3 package
+  into `.allure/` (~240 MB). It is gitignored.
+- When installing Playwright browsers locally, set `PLAYWRIGHT_SKIP_BROWSER_GC=1`.
+  The installer otherwise deletes browser builds in the shared cache that belong
+  to *other* Playwright projects on the same machine.
 
 ### Endpoints and credentials
 

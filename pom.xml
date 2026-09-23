@@ -14,15 +14,15 @@
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <junit.version>5.12.2</junit.version>
-    <junit.platform.version>1.12.2</junit.platform.version>
-    <restassured.version>5.5.2</restassured.version>
-    <playwright.version>1.52.0</playwright.version>
-    <assertj.version>3.27.3</assertj.version>
-    <jackson.version>2.19.0</jackson.version>
-    <lombok.version>1.18.38</lombok.version>
+    <junit.version>5.14.4</junit.version>
+    <junit.platform.version>1.14.4</junit.platform.version>
+    <restassured.version>6.0.1</restassured.version>
+    <playwright.version>1.63.0</playwright.version>
+    <assertj.version>3.27.7</assertj.version>
+    <jackson.version>2.22.3</jackson.version>
+    <lombok.version>1.18.48</lombok.version>
     <dotenv.version>3.2.0</dotenv.version>
-    <allure.version>2.29.1</allure.version>
+    <allure.version>2.35.5</allure.version>
     <aspectj.version>1.9.25.1</aspectj.version>
   </properties>
 
@@ -68,7 +68,7 @@
     </dependency>
     <dependency>
       <groupId>io.qameta.allure</groupId>
-      <artifactId>allure-junit5</artifactId>
+      <artifactId>allure-jupiter</artifactId>
       <version>${allure.version}</version>
     </dependency>
     <dependency>
@@ -95,7 +95,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.15.0</version>
+        <version>3.16.0</version>
         <configuration>
           <annotationProcessorPaths>
             <path>
@@ -110,7 +110,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.5.6</version>
+        <version>3.6.0</version>
         <configuration>
           <argLine>
             -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
@@ -131,9 +131,10 @@
       <plugin>
         <groupId>io.qameta.allure</groupId>
         <artifactId>allure-maven</artifactId>
-        <version>2.15.2</version>
+        <version>3.1.0</version>
         <configuration>
-          <reportVersion>2.29.1</reportVersion>
+          <!-- Allure 3 report; the plugin provisions its own Node.js runtime. -->
+          <reportVersion>3.17.0</reportVersion>
           <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
         </configuration>
       </plugin>
@@ -141,7 +142,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>3.5.0</version>
+        <version>3.6.4</version>
       </plugin>
 
       <plugin>
@@ -157,7 +158,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>3.5.6</version>
+        <version>3.6.0</version>
       </plugin>
     </plugins>
   </reporting>
