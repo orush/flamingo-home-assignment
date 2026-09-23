@@ -10,6 +10,7 @@ import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("Restful Booker")
 @Feature("Authentication")
@@ -23,9 +24,12 @@ class BookerAuthTest {
         ApiResponse<AuthResponse> response =
                 authClient.createToken(Config.bookerUsername(), Config.bookerPassword());
 
+        // Hard: the body below is only JSON when the call succeeded.
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body().getToken()).isNotBlank();
-        assertThat(response.body().getReason()).isNull();
+        assertSoftly(softly -> {
+            softly.assertThat(response.body().getToken()).isNotBlank();
+            softly.assertThat(response.body().getReason()).isNull();
+        });
     }
 
     @ApiTest
@@ -37,7 +41,9 @@ class BookerAuthTest {
         // Documented quirk of this API: the failure is reported in the body,
         // not the status line.
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body().getReason()).isEqualTo("Bad credentials");
-        assertThat(response.body().getToken()).isNull();
+        assertSoftly(softly -> {
+            softly.assertThat(response.body().getReason()).isEqualTo("Bad credentials");
+            softly.assertThat(response.body().getToken()).isNull();
+        });
     }
 }

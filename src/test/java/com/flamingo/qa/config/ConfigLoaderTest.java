@@ -9,6 +9,7 @@ import org.junit.jupiter.api.parallel.Resources;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /**
  * Exercises the resolution mechanism, never a real value.
@@ -55,9 +56,11 @@ class ConfigLoaderTest {
     @Test
     @DisplayName("Optional keys fall back to built-in defaults")
     void fallsBackToBuiltInDefaultForOptionalKeys() {
-        assertThat(ConfigLoader.get("ui.browser")).isEqualTo("chromium");
-        assertThat(ConfigLoader.get("ui.headless")).isEqualTo("true");
-        assertThat(ConfigLoader.get("http.timeout.ms")).isEqualTo("30000");
+        assertSoftly(softly -> {
+            softly.assertThat(ConfigLoader.get("ui.browser")).isEqualTo("chromium");
+            softly.assertThat(ConfigLoader.get("ui.headless")).isEqualTo("true");
+            softly.assertThat(ConfigLoader.get("http.timeout.ms")).isEqualTo("30000");
+        });
     }
 
     @Test
@@ -73,16 +76,20 @@ class ConfigLoaderTest {
     @Test
     @DisplayName("Dotted keys map to the environment variable convention")
     void mapsDottedKeyToEnvironmentVariableName() {
-        assertThat(ConfigLoader.toEnvKey("booker.base.url")).isEqualTo("BOOKER_BASE_URL");
-        assertThat(ConfigLoader.toEnvKey("http.timeout.ms")).isEqualTo("HTTP_TIMEOUT_MS");
+        assertSoftly(softly -> {
+            softly.assertThat(ConfigLoader.toEnvKey("booker.base.url")).isEqualTo("BOOKER_BASE_URL");
+            softly.assertThat(ConfigLoader.toEnvKey("http.timeout.ms")).isEqualTo("HTTP_TIMEOUT_MS");
+        });
     }
 
     @Test
     @DisplayName("Typed accessors parse the defaults")
     void typedAccessorsParseDefaults() {
-        assertThat(Config.headless()).isTrue();
-        assertThat(Config.timeoutMillis()).isEqualTo(30_000);
-        assertThat(Config.browser()).isEqualTo("chromium");
+        assertSoftly(softly -> {
+            softly.assertThat(Config.headless()).isTrue();
+            softly.assertThat(Config.timeoutMillis()).isEqualTo(30_000);
+            softly.assertThat(Config.browser()).isEqualTo("chromium");
+        });
     }
 
     @Test
@@ -90,10 +97,12 @@ class ConfigLoaderTest {
     void requiredEndpointsAreResolvable() {
         // Proves .env (or the CI environment) is wired up, without asserting
         // any value. Fails loudly if the setup step was skipped.
-        assertThat(Config.bookerBaseUrl()).startsWith("http");
-        assertThat(Config.graphQlEndpoint()).startsWith("http");
-        assertThat(Config.uiBaseUrl()).startsWith("http");
-        assertThat(Config.bookerUsername().reveal()).isNotBlank();
-        assertThat(Config.bookerPassword().reveal()).isNotBlank();
+        assertSoftly(softly -> {
+            softly.assertThat(Config.bookerBaseUrl()).startsWith("http");
+            softly.assertThat(Config.graphQlEndpoint()).startsWith("http");
+            softly.assertThat(Config.uiBaseUrl()).startsWith("http");
+            softly.assertThat(Config.bookerUsername().reveal()).isNotBlank();
+            softly.assertThat(Config.bookerPassword().reveal()).isNotBlank();
+        });
     }
 }

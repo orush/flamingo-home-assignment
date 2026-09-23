@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 /**
@@ -76,13 +77,15 @@ class GraphQlNegativeTest {
         GraphQlResponse response = graphQl.execute(GraphQlRequest.fromFile(
                 "movie-by-id.graphql", Map.of("id", "this-id-does-not-exist")));
 
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.node("/data/movie").isNull())
-                .as("the field is present and explicitly null")
-                .isTrue();
-        assertThat(response.node("/errors").isMissingNode())
-                .as("a missing entity is not an error: no errors key at all")
-                .isTrue();
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(200);
+            softly.assertThat(response.node("/data/movie").isNull())
+                    .as("the field is present and explicitly null")
+                    .isTrue();
+            softly.assertThat(response.node("/errors").isMissingNode())
+                    .as("a missing entity is not an error: no errors key at all")
+                    .isTrue();
+        });
     }
 
     @ApiTest
@@ -94,17 +97,21 @@ class GraphQlNegativeTest {
         GraphQlResponse response = graphQl.execute(GraphQlRequest.of(
                 DELETE_MOVIE, Map.of("id", "this-id-does-not-exist")));
 
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.node("/data/deleteMovie").isNull())
-                .as("data is present, with the failed field set to null")
-                .isTrue();
-
-        GraphQlError error = response.errors().get(0);
-        assertThat(error.getMessage()).isEqualTo("not allowed");
-        assertThat(error.getExtensions())
-                .containsEntry("code", "403")
-                // Hygraph nests the path under extensions; see the finding below.
-                .containsEntry("path", List.of("deleteMovie"));
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(200);
+            softly.assertThat(response.node("/data/deleteMovie").isNull())
+                    .as("data is present, with the failed field set to null")
+                    .isTrue();
+            softly.assertThat(response.errors())
+                    .extracting(GraphQlError::getMessage)
+                    .containsExactly("not allowed");
+            softly.assertThat(response.errors())
+                    .extracting(GraphQlError::getExtensions)
+                    .satisfiesExactly(extensions -> assertThat(extensions)
+                            .containsEntry("code", "403")
+                            // Hygraph nests the path under extensions; see the finding below.
+                            .containsEntry("path", List.of("deleteMovie")));
+        });
     }
 
     @ApiTest
@@ -142,16 +149,17 @@ class GraphQlNegativeTest {
 
         GraphQlResponse response = graphQl.execute(GraphQlRequest.of(DELETE_MOVIE, Map.of("id", id)));
 
-        assertThat(response.statusCode()).isEqualTo(403);
-        assertThat(response.node("/data").isNull()).isTrue();
-        assertThat(response.errors())
-                .singleElement()
-                .extracting(GraphQlError::getMessage)
-                .isEqualTo("Mutation failed due to permission errors");
-        assertThat(response.node("/errors/0/extensions/failedActions/0/action").asText())
-                .isEqualTo("delete");
-        assertThat(response.node("/errors/0/extensions/failedActions/0/model").asText())
-                .isEqualTo("Movie");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(403);
+            softly.assertThat(response.node("/data").isNull()).isTrue();
+            softly.assertThat(response.errors())
+                    .extracting(GraphQlError::getMessage)
+                    .containsExactly("Mutation failed due to permission errors");
+            softly.assertThat(response.node("/errors/0/extensions/failedActions/0/action").asText())
+                    .isEqualTo("delete");
+            softly.assertThat(response.node("/errors/0/extensions/failedActions/0/model").asText())
+                    .isEqualTo("Movie");
+        });
 
         // The refusal must be real, not only reported.
         Movie stillThere = graphQl.execute(GraphQlRequest.fromFile(
@@ -170,16 +178,17 @@ class GraphQlNegativeTest {
         // Unbalanced braces: the document ends mid-selection.
         GraphQlResponse response = graphQl.execute(GraphQlRequest.of("query { movies { id title "));
 
-        assertThat(response.statusCode()).isEqualTo(400);
-        assertThat(response.errors())
-                .singleElement()
-                .extracting(GraphQlError::getMessage)
-                .asString()
-                .contains("ParseError")
-                .contains("Unexpected end of input");
-        assertThat(response.node("/data").isNull())
-                .as("nothing executed, so data is null")
-                .isTrue();
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(400);
+            softly.assertThat(response.errors())
+                    .extracting(GraphQlError::getMessage)
+                    .satisfiesExactly(message -> assertThat(message)
+                            .contains("ParseError")
+                            .contains("Unexpected end of input"));
+            softly.assertThat(response.node("/data").isNull())
+                    .as("nothing executed, so data is null")
+                    .isTrue();
+        });
     }
 
     @ApiTest
@@ -190,16 +199,17 @@ class GraphQlNegativeTest {
         GraphQlResponse response = graphQl.execute(GraphQlRequest.of(
                 "query { movies(first: 1) { id notARealField } }"));
 
-        assertThat(response.statusCode()).isEqualTo(400);
-        // Hygraph reformats the document before validating, so the reported line
-        // number does not match the submitted text. Assert on names only.
-        assertThat(response.errors())
-                .singleElement()
-                .extracting(GraphQlError::getMessage)
-                .asString()
-                .contains("'notARealField'")
-                .contains("'Movie'");
-        assertThat(response.node("/data").isNull()).isTrue();
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(400);
+            // Hygraph reformats the document before validating, so the reported line
+            // number does not match the submitted text. Assert on names only.
+            softly.assertThat(response.errors())
+                    .extracting(GraphQlError::getMessage)
+                    .satisfiesExactly(message -> assertThat(message)
+                            .contains("'notARealField'")
+                            .contains("'Movie'"));
+            softly.assertThat(response.node("/data").isNull()).isTrue();
+        });
     }
 
     static Stream<Arguments> invalidVariables() {
@@ -229,13 +239,13 @@ class GraphQlNegativeTest {
         GraphQlResponse response = graphQl.execute(
                 GraphQlRequest.fromFile("movies-page.graphql", variables));
 
-        assertThat(response.statusCode()).as(scenario).isEqualTo(400);
-        assertThat(response.errors())
-                .as(scenario)
-                .singleElement()
-                .extracting(GraphQlError::getMessage)
-                .asString()
-                .contains(expectedMessage);
-        assertThat(response.node("/data").isNull()).as(scenario).isTrue();
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).as(scenario).isEqualTo(400);
+            softly.assertThat(response.errors())
+                    .as(scenario)
+                    .extracting(GraphQlError::getMessage)
+                    .satisfiesExactly(message -> assertThat(message).contains(expectedMessage));
+            softly.assertThat(response.node("/data").isNull()).as(scenario).isTrue();
+        });
     }
 }

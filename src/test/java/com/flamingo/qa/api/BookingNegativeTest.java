@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /**
  * How the booking endpoints behave when given bad input.
@@ -84,11 +85,13 @@ class BookingNegativeTest {
     void returnsNotFoundForUnknownId() {
         ApiResponse<Booking> response = bookings.getById(ABSENT_BOOKING_ID, token());
 
-        assertThat(response.statusCode()).isEqualTo(404);
-        assertThat(response.rawBody()).isEqualTo("Not Found");
-        assertThat(response.body())
-                .as("no model is produced from a plain-text error body")
-                .isNull();
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(404);
+            softly.assertThat(response.rawBody()).isEqualTo("Not Found");
+            softly.assertThat(response.body())
+                    .as("no model is produced from a plain-text error body")
+                    .isNull();
+        });
     }
 
     @ApiTest
@@ -97,8 +100,10 @@ class BookingNegativeTest {
     void returnsNotFoundForNonNumericId() {
         ApiResponse<Booking> response = bookings.getByRawId("not-a-number", token());
 
-        assertThat(response.statusCode()).isEqualTo(404);
-        assertThat(response.rawBody()).isEqualTo("Not Found");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(404);
+            softly.assertThat(response.rawBody()).isEqualTo("Not Found");
+        });
     }
 
     @ApiTest
@@ -110,8 +115,10 @@ class BookingNegativeTest {
         ApiResponse<JsonNode> response =
                 bookings.updateRaw(ABSENT_BOOKING_ID, validPayload(), token());
 
-        assertThat(response.statusCode()).isEqualTo(405);
-        assertThat(response.rawBody()).isEqualTo("Method Not Allowed");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(405);
+            softly.assertThat(response.rawBody()).isEqualTo("Method Not Allowed");
+        });
     }
 
     @ApiTest
@@ -121,8 +128,10 @@ class BookingNegativeTest {
         ApiResponse<Booking> response =
                 bookings.patch(ABSENT_BOOKING_ID, Map.of("firstname", "Ghost"), token());
 
-        assertThat(response.statusCode()).isEqualTo(405);
-        assertThat(response.rawBody()).isEqualTo("Method Not Allowed");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(405);
+            softly.assertThat(response.rawBody()).isEqualTo("Method Not Allowed");
+        });
     }
 
     @ApiTest
@@ -131,8 +140,10 @@ class BookingNegativeTest {
     void rejectsDeleteOfNonExistentBooking() {
         ApiResponse<Void> response = bookings.delete(ABSENT_BOOKING_ID, token());
 
-        assertThat(response.statusCode()).isEqualTo(405);
-        assertThat(response.rawBody()).isEqualTo("Method Not Allowed");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(405);
+            softly.assertThat(response.rawBody()).isEqualTo("Method Not Allowed");
+        });
     }
 
     // ---------------------------------------------------------------
@@ -145,8 +156,10 @@ class BookingNegativeTest {
     void rejectsMalformedJson() {
         ApiResponse<JsonNode> response = bookings.createRaw("{\"firstname\":", token());
 
-        assertThat(response.statusCode()).isEqualTo(400);
-        assertThat(response.rawBody()).isEqualTo("Bad Request");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(400);
+            softly.assertThat(response.rawBody()).isEqualTo("Bad Request");
+        });
     }
 
     @ApiTest
@@ -160,8 +173,10 @@ class BookingNegativeTest {
         ApiResponse<JsonNode> response =
                 bookings.updateRaw(id, Map.of("firstname", "OnlyThis"), token());
 
-        assertThat(response.statusCode()).isEqualTo(400);
-        assertThat(response.rawBody()).isEqualTo("Bad Request");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(400);
+            softly.assertThat(response.rawBody()).isEqualTo("Bad Request");
+        });
     }
 
     // ===============================================================

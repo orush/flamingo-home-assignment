@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("Framework")
 @Feature("UI plumbing")
@@ -20,14 +21,18 @@ class ExactTextTest {
     @Test
     @DisplayName("Escapes metacharacters so they match literally")
     void escapesMetacharacters() {
-        assertThat(ExactText.of("C++ (Advanced) $5.00?").matcher("C++ (Advanced) $5.00?").matches()).isTrue();
-        assertThat(ExactText.of("a.c").matcher("abc").matches()).isFalse();
+        assertSoftly(softly -> {
+            softly.assertThat(ExactText.of("C++ (Advanced) $5.00?").matcher("C++ (Advanced) $5.00?").matches()).isTrue();
+            softly.assertThat(ExactText.of("a.c").matcher("abc").matches()).isFalse();
+        });
     }
 
     @Test
     @DisplayName("Matches the whole text, not a fragment of it")
     void anchorsBothEnds() {
-        assertThat(ExactText.of("Music").matcher("Music").matches()).isTrue();
-        assertThat(ExactText.of("Music").matcher("Musicals").find()).isFalse();
+        assertSoftly(softly -> {
+            softly.assertThat(ExactText.of("Music").matcher("Music").matches()).isTrue();
+            softly.assertThat(ExactText.of("Music").matcher("Musicals").find()).isFalse();
+        });
     }
 }

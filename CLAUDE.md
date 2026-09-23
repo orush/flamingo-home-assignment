@@ -57,6 +57,15 @@ That is expected; only a failure outside `@Tag("finding")` is a regression.
 - UI tests receive `Page` as a method parameter; `@Actor("name") Page` gives
   extra isolated sessions. Page objects expose actions and data and never
   assert; public actions carry `@Step`.
+- Two or more independent checks in a row go in one
+  `assertSoftly(softly -> ...)` block, so a failure reports all of them.
+  Nothing inside the block may throw: any non-assertion exception, including
+  the NPE from chaining after a failed soft `first()` / `singleElement()`,
+  discards every collected failure. So a precondition that later lines
+  dereference (status before `body().getX()`, GraphQL success before
+  `get`/`getList`) stays a hard `assertThat` before the block. For list
+  elements, use `extracting(...).containsExactly(...)` or `satisfiesExactly(...)`
+  instead of navigating.
 - Every test has `@DisplayName`; classes carry `@Epic` / `@Feature` (and
   `@Story`). Framework self-tests use `@Epic("Framework")`.
 - Reusable, valid GraphQL queries go in `src/main/resources/graphql/*.graphql`;

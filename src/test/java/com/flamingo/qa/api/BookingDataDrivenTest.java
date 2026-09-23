@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("Restful Booker")
 @Feature("Booking CRUD")
@@ -38,9 +39,12 @@ class BookingDataDrivenTest {
         ApiResponse<CreateBookingResponse> response =
                 bookings.create(booking, TokenProvider.token());
 
+        // Hard: the body below is only a booking when the create succeeded.
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body().getBookingid()).isPositive();
-        assertThat(response.body().getBooking().getDepositpaid()).isEqualTo(depositPaid);
-        assertThat(response.body().getBooking().getAdditionalneeds()).isEqualTo(additionalNeeds);
+        assertSoftly(softly -> {
+            softly.assertThat(response.body().getBookingid()).isPositive();
+            softly.assertThat(response.body().getBooking().getDepositpaid()).isEqualTo(depositPaid);
+            softly.assertThat(response.body().getBooking().getAdditionalneeds()).isEqualTo(additionalNeeds);
+        });
     }
 }

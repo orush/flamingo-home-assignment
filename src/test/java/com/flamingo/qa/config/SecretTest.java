@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("Framework")
 @Feature("Configuration")
@@ -17,10 +18,12 @@ class SecretTest {
     void neverPrintsItsValue() {
         Secret secret = Secret.of("hunter2");
 
-        assertThat(secret.toString()).isEqualTo(Secret.MASK);
-        assertThat(String.valueOf(secret)).doesNotContain("hunter2");
-        assertThat("token=" + secret).doesNotContain("hunter2");
-        assertThat(String.format("%s", secret)).doesNotContain("hunter2");
+        assertSoftly(softly -> {
+            softly.assertThat(secret.toString()).isEqualTo(Secret.MASK);
+            softly.assertThat(String.valueOf(secret)).doesNotContain("hunter2");
+            softly.assertThat("token=" + secret).doesNotContain("hunter2");
+            softly.assertThat(String.format("%s", secret)).doesNotContain("hunter2");
+        });
     }
 
     @Test

@@ -10,8 +10,8 @@ import java.net.ServerSocket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.TimeUnit;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("Framework")
 @Feature("HTTP client")
@@ -32,10 +32,12 @@ class RestClientTimeoutTest {
                     .get("/"));
 
             long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-            assertThat(causeChainContains(thrown, SocketTimeoutException.class))
-                    .as("expected a socket timeout, got %s", thrown)
-                    .isTrue();
-            assertThat(elapsedMs).as("gave up after the configured timeout").isLessThan(5_000);
+            assertSoftly(softly -> {
+                softly.assertThat(causeChainContains(thrown, SocketTimeoutException.class))
+                        .as("expected a socket timeout, got %s", thrown)
+                        .isTrue();
+                softly.assertThat(elapsedMs).as("gave up after the configured timeout").isLessThan(5_000);
+            });
         }
     }
 

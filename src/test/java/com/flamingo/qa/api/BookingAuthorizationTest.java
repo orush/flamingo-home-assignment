@@ -18,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /**
  * Authorization coverage for every booking endpoint.
@@ -86,12 +87,14 @@ class BookingAuthorizationTest {
     void listAcceptsUnauthenticatedReads() {
         ApiResponse<BookingId[]> response = bookings.getAllWithoutToken();
 
-        assertThat(response.statusCode())
-                .as("unauthenticated collection read should be rejected, but the API allows it")
-                .isEqualTo(200);
-        assertThat(response.body())
-                .as("the unauthenticated response really does contain ids")
-                .isNotEmpty();
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode())
+                    .as("unauthenticated collection read should be rejected, but the API allows it")
+                    .isEqualTo(200);
+            softly.assertThat(response.body())
+                    .as("the unauthenticated response really does contain ids")
+                    .isNotEmpty();
+        });
     }
 
     @ApiTest
@@ -125,8 +128,10 @@ class BookingAuthorizationTest {
         ApiResponse<Booking> response =
                 bookings.updateWithoutToken(id, TestDataFactory.randomBooking());
 
-        assertThat(response.statusCode()).isEqualTo(403);
-        assertThat(response.rawBody()).isEqualTo("Forbidden");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(403);
+            softly.assertThat(response.rawBody()).isEqualTo("Forbidden");
+        });
     }
 
     @ApiTest
@@ -138,8 +143,10 @@ class BookingAuthorizationTest {
         ApiResponse<Booking> response =
                 bookings.patchWithoutToken(id, Map.of("firstname", "NoToken"));
 
-        assertThat(response.statusCode()).isEqualTo(403);
-        assertThat(response.rawBody()).isEqualTo("Forbidden");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(403);
+            softly.assertThat(response.rawBody()).isEqualTo("Forbidden");
+        });
     }
 
     @ApiTest
@@ -150,8 +157,10 @@ class BookingAuthorizationTest {
 
         ApiResponse<Void> response = bookings.deleteWithoutToken(id);
 
-        assertThat(response.statusCode()).isEqualTo(403);
-        assertThat(response.rawBody()).isEqualTo("Forbidden");
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(403);
+            softly.assertThat(response.rawBody()).isEqualTo("Forbidden");
+        });
     }
 
     // ---------------------------------------------------------------
@@ -204,11 +213,13 @@ class BookingAuthorizationTest {
         int id = seedBooking();
         Secret token = TokenProvider.token();
 
-        assertThat(bookings.update(id, TestDataFactory.randomBooking(), token).statusCode())
-                .as("PUT with a valid token").isEqualTo(200);
-        assertThat(bookings.patch(id, Map.of("firstname", "Valid"), token).statusCode())
-                .as("PATCH with a valid token").isEqualTo(200);
-        assertThat(bookings.delete(id, token).statusCode())
-                .as("DELETE with a valid token").isEqualTo(201);
+        assertSoftly(softly -> {
+            softly.assertThat(bookings.update(id, TestDataFactory.randomBooking(), token).statusCode())
+                    .as("PUT with a valid token").isEqualTo(200);
+            softly.assertThat(bookings.patch(id, Map.of("firstname", "Valid"), token).statusCode())
+                    .as("PATCH with a valid token").isEqualTo(200);
+            softly.assertThat(bookings.delete(id, token).statusCode())
+                    .as("DELETE with a valid token").isEqualTo(201);
+        });
     }
 }

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Tag;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /**
  * Booking lifecycle against the live service.
@@ -52,9 +53,12 @@ class BookingCrudTest {
         ApiResponse<CreateBookingResponse> response =
                 bookings.create(booking, TokenProvider.token());
 
+        // Hard: the body below is only a booking when the create succeeded.
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body().getBookingid()).isPositive();
-        assertThat(response.body().getBooking()).isEqualTo(booking);
+        assertSoftly(softly -> {
+            softly.assertThat(response.body().getBookingid()).isPositive();
+            softly.assertThat(response.body().getBooking()).isEqualTo(booking);
+        });
     }
 
     @ApiTest
@@ -65,8 +69,10 @@ class BookingCrudTest {
 
         ApiResponse<Booking> response = bookings.getById(id, TokenProvider.token());
 
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(booking);
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(200);
+            softly.assertThat(response.body()).isEqualTo(booking);
+        });
     }
 
     @ApiTest
@@ -81,9 +87,11 @@ class BookingCrudTest {
 
         ApiResponse<Booking> response = bookings.update(id, updated, TokenProvider.token());
 
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(updated);
-        assertThat(bookings.getById(id, TokenProvider.token()).body()).isEqualTo(updated);
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(200);
+            softly.assertThat(response.body()).isEqualTo(updated);
+            softly.assertThat(bookings.getById(id, TokenProvider.token()).body()).isEqualTo(updated);
+        });
     }
 
     @ApiTest
@@ -98,14 +106,16 @@ class BookingCrudTest {
         assertThat(response.statusCode()).isEqualTo(200);
 
         Booking patched = response.body();
-        assertThat(patched.getFirstname()).isEqualTo("Patched");
-        assertThat(patched.getTotalprice()).isEqualTo(4242);
-        // Everything not named in the request survives untouched — the whole
-        // point of PATCH over PUT.
-        assertThat(patched.getLastname()).isEqualTo(original.getLastname());
-        assertThat(patched.getDepositpaid()).isEqualTo(original.getDepositpaid());
-        assertThat(patched.getBookingdates()).isEqualTo(original.getBookingdates());
-        assertThat(patched.getAdditionalneeds()).isEqualTo(original.getAdditionalneeds());
+        assertSoftly(softly -> {
+            softly.assertThat(patched.getFirstname()).isEqualTo("Patched");
+            softly.assertThat(patched.getTotalprice()).isEqualTo(4242);
+            // Everything not named in the request survives untouched — the whole
+            // point of PATCH over PUT.
+            softly.assertThat(patched.getLastname()).isEqualTo(original.getLastname());
+            softly.assertThat(patched.getDepositpaid()).isEqualTo(original.getDepositpaid());
+            softly.assertThat(patched.getBookingdates()).isEqualTo(original.getBookingdates());
+            softly.assertThat(patched.getAdditionalneeds()).isEqualTo(original.getAdditionalneeds());
+        });
     }
 
     @ApiTest
@@ -116,7 +126,9 @@ class BookingCrudTest {
         ApiResponse<Void> response = bookings.delete(id, TokenProvider.token());
 
         // Documented quirk: this API answers a successful DELETE with 201 Created.
-        assertThat(response.statusCode()).isEqualTo(201);
-        assertThat(bookings.getById(id, TokenProvider.token()).statusCode()).isEqualTo(404);
+        assertSoftly(softly -> {
+            softly.assertThat(response.statusCode()).isEqualTo(201);
+            softly.assertThat(bookings.getById(id, TokenProvider.token()).statusCode()).isEqualTo(404);
+        });
     }
 }

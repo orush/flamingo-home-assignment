@@ -369,7 +369,10 @@ and `WebTablesPage` extend it; `SubmissionModal`, `RegistrationDialog` and
 `WebTableGrid` wrap repeated regions.
 
 Discipline: page objects expose **actions and data only, never assertions**.
-Every assertion lives in the test and uses AssertJ.
+Every assertion lives in the test and uses AssertJ. Independent checks in a
+row are grouped with `assertSoftly`, so one run reports every mismatch; a
+precondition that later checks depend on (such as the status code before
+reading the body) stays a hard assertion ahead of the soft block.
 
 ## 7. Test inventory
 

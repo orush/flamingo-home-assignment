@@ -8,7 +8,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /** Proves the UI plumbing itself: injection, isolation and network policy. */
 @Epic("Framework")
@@ -20,11 +20,13 @@ class PlaywrightInjectionSmokeTest {
     void injectsPageWithThirdPartyTrafficBlocked(Page page) {
         page.navigate(Config.uiBaseUrl() + "/webtables");
 
-        assertThat(page.title()).isNotBlank();
-        assertThat(page.url()).endsWith("/webtables");
-        // Unblocked, this page embeds several ad iframes. Only the main frame
-        // should remain.
-        assertThat(page.frames()).hasSize(1);
+        assertSoftly(softly -> {
+            softly.assertThat(page.title()).isNotBlank();
+            softly.assertThat(page.url()).endsWith("/webtables");
+            // Unblocked, this page embeds several ad iframes. Only the main frame
+            // should remain.
+            softly.assertThat(page.frames()).hasSize(1);
+        });
     }
 
     @UiTest
@@ -35,10 +37,12 @@ class PlaywrightInjectionSmokeTest {
 
         alice.evaluate("() => localStorage.setItem('owner', 'alice')");
 
-        assertThat(alice).isNotSameAs(bob);
-        assertThat(alice.context()).isNotSameAs(bob.context());
-        assertThat(bob.evaluate("() => localStorage.getItem('owner')"))
-                .as("storage written by one actor must be invisible to the other")
-                .isNull();
+        assertSoftly(softly -> {
+            softly.assertThat(alice).isNotSameAs(bob);
+            softly.assertThat(alice.context()).isNotSameAs(bob.context());
+            softly.assertThat(bob.evaluate("() => localStorage.getItem('owner')"))
+                    .as("storage written by one actor must be invisible to the other")
+                    .isNull();
+        });
     }
 }

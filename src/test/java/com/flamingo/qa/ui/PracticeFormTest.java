@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("DemoQA")
 @Feature("Practice form")
@@ -45,8 +46,10 @@ class PracticeFormTest {
                 .fill(registration)
                 .submit();
 
-        assertThat(confirmation.title()).isEqualTo("Thanks for submitting the form");
-        assertThat(confirmation.values()).containsExactlyEntriesOf(expectedConfirmation(registration));
+        assertSoftly(softly -> {
+            softly.assertThat(confirmation.title()).isEqualTo("Thanks for submitting the form");
+            softly.assertThat(confirmation.values()).containsExactlyEntriesOf(expectedConfirmation(registration));
+        });
     }
 
     @UiTest
@@ -67,10 +70,12 @@ class PracticeFormTest {
     void rejectsEmptySubmission(Page page) {
         PracticeFormPage form = new PracticeFormPage(page).open().attemptSubmit();
 
-        assertThat(form.confirmationAppears()).isFalse();
-        assertThat(form.showsValidationErrors()).isTrue();
-        assertThat(form.invalidFields())
-                .containsExactlyInAnyOrder("firstName", "lastName", "gender", "userNumber");
+        assertSoftly(softly -> {
+            softly.assertThat(form.confirmationAppears()).isFalse();
+            softly.assertThat(form.showsValidationErrors()).isTrue();
+            softly.assertThat(form.invalidFields())
+                    .containsExactlyInAnyOrder("firstName", "lastName", "gender", "userNumber");
+        });
     }
 
     @Tag("ui")
@@ -88,8 +93,10 @@ class PracticeFormTest {
 
         PracticeFormPage form = new PracticeFormPage(page).open().fill(invalid).attemptSubmit();
 
-        assertThat(form.confirmationAppears()).as("%s: no confirmation", scenario).isFalse();
-        assertThat(form.invalidFields()).as("%s: flagged field", scenario).containsExactly(flaggedField);
+        assertSoftly(softly -> {
+            softly.assertThat(form.confirmationAppears()).as("%s: no confirmation", scenario).isFalse();
+            softly.assertThat(form.invalidFields()).as("%s: flagged field", scenario).containsExactly(flaggedField);
+        });
     }
 
     /**

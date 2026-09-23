@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Epic("Hygraph GraphQL")
 @Feature("Queries")
@@ -37,11 +38,14 @@ class GraphQlPositiveTest {
     void limitsListToRequestedPageSize() {
         GraphQlResponse response = moviesPage(3, 0);
 
+        // Hard: on a failed request the data paths below are absent and throw.
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.hasErrors()).isFalse();
-        assertThat(response.getList("/data/movies", Movie.class)).hasSize(3);
-        assertThat(response.get("/data/moviesConnection/aggregate/count", Integer.class))
-                .isGreaterThanOrEqualTo(3);
+        assertSoftly(softly -> {
+            softly.assertThat(response.getList("/data/movies", Movie.class)).hasSize(3);
+            softly.assertThat(response.get("/data/moviesConnection/aggregate/count", Integer.class))
+                    .isGreaterThanOrEqualTo(3);
+        });
     }
 
     @ApiTest
@@ -91,14 +95,16 @@ class GraphQlPositiveTest {
         Movie fetchedSecond = graphQl.execute(GraphQlRequest.of(document, Map.of("id", second.getId())))
                 .get("/data/movie", Movie.class);
 
-        assertThat(fetchedFirst).isEqualTo(first);
-        assertThat(fetchedSecond).isEqualTo(second);
-        // The identical document produced both results, and no id was ever
-        // spliced into it: the values travelled only as variables.
-        assertThat(document)
-                .contains("$id")
-                .doesNotContain(first.getId())
-                .doesNotContain(second.getId());
+        assertSoftly(softly -> {
+            softly.assertThat(fetchedFirst).isEqualTo(first);
+            softly.assertThat(fetchedSecond).isEqualTo(second);
+            // The identical document produced both results, and no id was ever
+            // spliced into it: the values travelled only as variables.
+            softly.assertThat(document)
+                    .contains("$id")
+                    .doesNotContain(first.getId())
+                    .doesNotContain(second.getId());
+        });
     }
 
     @ApiTest

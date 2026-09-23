@@ -22,6 +22,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /**
  * Web tables: add, edit, delete, search and sort.
@@ -67,10 +68,14 @@ class WebTablesTest {
         tables.editRecord(original.getEmail(), edited);
 
         List<WebTableRecord> after = tables.records();
-        assertThat(after).hasSameSizeAs(before).contains(edited).doesNotContain(original);
-        assertThat(after.subList(1, after.size()))
-                .as("rows other than the edited one are unchanged")
-                .isEqualTo(before.subList(1, before.size()));
+        // Hard, because subList below throws on a table that lost its rows.
+        assertThat(after).hasSameSizeAs(before);
+        assertSoftly(softly -> {
+            softly.assertThat(after).contains(edited).doesNotContain(original);
+            softly.assertThat(after.subList(1, after.size()))
+                    .as("rows other than the edited one are unchanged")
+                    .isEqualTo(before.subList(1, before.size()));
+        });
     }
 
     @UiTest
@@ -101,10 +106,12 @@ class WebTablesTest {
 
         List<WebTableRecord> matches = tables.search(term).records();
 
-        assertThat(matches).contains(target);
-        assertThat(matches).allSatisfy(record ->
-                assertThat(record.cells()).anySatisfy(cell ->
-                        assertThat(cell).containsIgnoringCase(term)));
+        assertSoftly(softly -> {
+            softly.assertThat(matches).contains(target);
+            softly.assertThat(matches).allSatisfy(record ->
+                    assertThat(record.cells()).anySatisfy(cell ->
+                            assertThat(cell).containsIgnoringCase(term)));
+        });
     }
 
     @UiTest
@@ -114,8 +121,10 @@ class WebTablesTest {
         WebTablesPage tables = new WebTablesPage(page).open();
         List<WebTableRecord> all = tables.records();
 
-        assertThat(tables.search("no-such-record-zzz").records()).isEmpty();
-        assertThat(tables.search("").records()).isEqualTo(all);
+        assertSoftly(softly -> {
+            softly.assertThat(tables.search("no-such-record-zzz").records()).isEmpty();
+            softly.assertThat(tables.search("").records()).isEqualTo(all);
+        });
     }
 
     @Tag("ui")
@@ -138,9 +147,11 @@ class WebTablesTest {
         dialog.fill(invalid);
         dialog.submit();
 
-        assertThat(dialog.staysOpen()).as("%s: dialog stays open", scenario).isTrue();
-        assertThat(dialog.invalidFields()).as("%s: flagged field", scenario).containsExactly(invalidInput);
-        assertThat(tables.records()).as("%s: nothing added", scenario).hasSize(rowsBefore);
+        assertSoftly(softly -> {
+            softly.assertThat(dialog.staysOpen()).as("%s: dialog stays open", scenario).isTrue();
+            softly.assertThat(dialog.invalidFields()).as("%s: flagged field", scenario).containsExactly(invalidInput);
+            softly.assertThat(tables.records()).as("%s: nothing added", scenario).hasSize(rowsBefore);
+        });
     }
 
     // ===============================================================

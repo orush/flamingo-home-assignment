@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /** Secrets must never reach a report. These tests hold the redaction rules to that. */
 @Epic("Framework")
@@ -50,18 +51,22 @@ class RedactorTest {
     @Test
     @DisplayName("A body that is not JSON passes through unchanged")
     void passesNonJsonThrough() {
-        assertThat(Redactor.redactJson("Forbidden")).isEqualTo("Forbidden");
-        assertThat(Redactor.redactJson("{\"firstname\":")).isEqualTo("{\"firstname\":");
-        assertThat(Redactor.redactJson(null)).isNull();
+        assertSoftly(softly -> {
+            softly.assertThat(Redactor.redactJson("Forbidden")).isEqualTo("Forbidden");
+            softly.assertThat(Redactor.redactJson("{\"firstname\":")).isEqualTo("{\"firstname\":");
+            softly.assertThat(Redactor.redactJson(null)).isNull();
+        });
     }
 
     @Test
     @DisplayName("Credential-bearing headers and cookies are recognised by name")
     void recognisesSensitiveNames() {
-        assertThat(Redactor.isSensitive("token")).isTrue();
-        assertThat(Redactor.isSensitive("Cookie")).isTrue();
-        assertThat(Redactor.isSensitive("set-cookie")).isTrue();
-        assertThat(Redactor.isSensitive("Authorization")).isTrue();
-        assertThat(Redactor.isSensitive("Content-Type")).isFalse();
+        assertSoftly(softly -> {
+            softly.assertThat(Redactor.isSensitive("token")).isTrue();
+            softly.assertThat(Redactor.isSensitive("Cookie")).isTrue();
+            softly.assertThat(Redactor.isSensitive("set-cookie")).isTrue();
+            softly.assertThat(Redactor.isSensitive("Authorization")).isTrue();
+            softly.assertThat(Redactor.isSensitive("Content-Type")).isFalse();
+        });
     }
 }
