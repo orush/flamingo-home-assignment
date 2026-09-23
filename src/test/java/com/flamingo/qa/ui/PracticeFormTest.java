@@ -8,8 +8,11 @@ import com.flamingo.qa.ui.model.StudentRegistration;
 import com.flamingo.qa.ui.pages.PracticeFormPage;
 import com.flamingo.qa.ui.pages.components.SubmissionModal;
 import com.microsoft.playwright.Page;
+import io.qameta.allure.Description;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
+import io.qameta.allure.Severity;
+import io.qameta.allure.SeverityLevel;
 import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -101,6 +104,34 @@ class PracticeFormTest {
         eventually(() -> assertThat(form.invalidFields())
                 .as("%s: flagged field", scenario)
                 .containsExactly(flaggedField));
+    }
+
+    // ===============================================================
+    // FINDING — asserts correct behaviour and therefore FAILS.
+    // ===============================================================
+
+    @UiTest
+    @Tag("finding")
+    @Story("Submission")
+    @Severity(SeverityLevel.NORMAL)
+    @DisplayName("FINDING: the confirmation's Close button must close the dialog")
+    @Description("After a registration is accepted, clicking Close in the confirmation does nothing: "
+            + "the dialog and its backdrop stay over the form. Only Escape closes it.")
+    void closeButtonClosesConfirmation(Page page) {
+        SubmissionModal confirmation = new PracticeFormPage(page)
+                .open()
+                .fill(TestDataFactory.completeRegistration())
+                .submit();
+
+        confirmation.close();
+
+        // Hard and outside the retry: it is a bounded wait of its own.
+        assertThat(confirmation.staysOpen())
+                .as("after a complete registration is submitted, clicking Close in the confirmation must "
+                        + "close it; the button is visible, enabled and receives the click, but the dialog "
+                        + "and its backdrop stay over the form, so the user cannot get back to it without "
+                        + "pressing Escape")
+                .isFalse();
     }
 
     /**
