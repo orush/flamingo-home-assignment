@@ -6,6 +6,7 @@ import com.flamingo.qa.api.RestClientFactory;
 import com.flamingo.qa.api.booker.model.Booking;
 import com.flamingo.qa.api.booker.model.BookingId;
 import com.flamingo.qa.api.booker.model.CreateBookingResponse;
+import com.flamingo.qa.config.Secret;
 import io.qameta.allure.Step;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -28,13 +29,13 @@ public class BookingClient {
     private static final String BY_ID = "/booking/{id}";
 
     /** Adds the token cookie only when one was supplied. */
-    private RequestSpecification spec(String token) {
+    private RequestSpecification spec(Secret token) {
         RequestSpecification spec = RestClientFactory.booker();
-        return token == null ? spec : spec.cookie("token", token);
+        return token == null ? spec : spec.cookie("token", token.reveal());
     }
 
     @Step("Create booking")
-    public ApiResponse<CreateBookingResponse> create(Booking booking, String token) {
+    public ApiResponse<CreateBookingResponse> create(Booking booking, Secret token) {
         Response response = spec(token).body(booking).post(COLLECTION);
         return ApiResponse.from(response, CreateBookingResponse.class);
     }
@@ -45,7 +46,7 @@ public class BookingClient {
     }
 
     @Step("List booking ids")
-    public ApiResponse<BookingId[]> getAll(String token) {
+    public ApiResponse<BookingId[]> getAll(Secret token) {
         Response response = spec(token).get(COLLECTION);
         return ApiResponse.from(response, BookingId[].class);
     }
@@ -56,14 +57,14 @@ public class BookingClient {
     }
 
     @Step("Get booking {id}")
-    public ApiResponse<Booking> getById(int id, String token) {
+    public ApiResponse<Booking> getById(int id, Secret token) {
         Response response = spec(token).get(BY_ID, id);
         return ApiResponse.from(response, Booking.class);
     }
 
     /** Fetch by an arbitrary path segment, so non-numeric ids can be exercised. */
     @Step("Get booking with raw id {id}")
-    public ApiResponse<Booking> getByRawId(String id, String token) {
+    public ApiResponse<Booking> getByRawId(String id, Secret token) {
         Response response = spec(token).get(BY_ID, id);
         return ApiResponse.from(response, Booking.class);
     }
@@ -81,20 +82,20 @@ public class BookingClient {
      * integer belongs, for instance. Accepts a String body for malformed JSON.
      */
     @Step("Create booking from a raw payload")
-    public ApiResponse<JsonNode> createRaw(Object body, String token) {
+    public ApiResponse<JsonNode> createRaw(Object body, Secret token) {
         Response response = spec(token).body(body).post(COLLECTION);
         return ApiResponse.from(response, JsonNode.class);
     }
 
     /** Update from an arbitrary payload, for incomplete or malformed bodies. */
     @Step("Update booking {id} from a raw payload")
-    public ApiResponse<JsonNode> updateRaw(int id, Object body, String token) {
+    public ApiResponse<JsonNode> updateRaw(int id, Object body, Secret token) {
         Response response = spec(token).body(body).put(BY_ID, id);
         return ApiResponse.from(response, JsonNode.class);
     }
 
     @Step("Update booking {id}")
-    public ApiResponse<Booking> update(int id, Booking booking, String token) {
+    public ApiResponse<Booking> update(int id, Booking booking, Secret token) {
         Response response = spec(token).body(booking).put(BY_ID, id);
         return ApiResponse.from(response, Booking.class);
     }
@@ -105,7 +106,7 @@ public class BookingClient {
     }
 
     @Step("Partially update booking {id}")
-    public ApiResponse<Booking> patch(int id, Map<String, Object> fields, String token) {
+    public ApiResponse<Booking> patch(int id, Map<String, Object> fields, Secret token) {
         Response response = spec(token).body(fields).patch(BY_ID, id);
         return ApiResponse.from(response, Booking.class);
     }
@@ -116,7 +117,7 @@ public class BookingClient {
     }
 
     @Step("Delete booking {id}")
-    public ApiResponse<Void> delete(int id, String token) {
+    public ApiResponse<Void> delete(int id, Secret token) {
         Response response = spec(token).delete(BY_ID, id);
         return ApiResponse.from(response, Void.class);
     }

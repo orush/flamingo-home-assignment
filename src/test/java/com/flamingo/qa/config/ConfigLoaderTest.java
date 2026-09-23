@@ -79,7 +79,7 @@ class ConfigLoaderTest {
         assertThat(Config.bookerBaseUrl()).startsWith("http");
         assertThat(Config.graphQlEndpoint()).startsWith("http");
         assertThat(Config.uiBaseUrl()).startsWith("http");
-        assertThat(Config.bookerUsername()).isNotBlank();
-        assertThat(Config.bookerPassword()).isNotBlank();
+        assertThat(Config.bookerUsername().reveal()).isNotBlank();
+        assertThat(Config.bookerPassword().reveal()).isNotBlank();
     }
 }

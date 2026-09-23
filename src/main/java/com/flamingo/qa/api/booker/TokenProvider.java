@@ -3,6 +3,7 @@ package com.flamingo.qa.api.booker;
 import com.flamingo.qa.api.ApiResponse;
 import com.flamingo.qa.api.booker.model.AuthResponse;
 import com.flamingo.qa.config.Config;
+import com.flamingo.qa.config.Secret;
 
 /**
  * Authenticates once per JVM and caches the token.
@@ -12,13 +13,13 @@ import com.flamingo.qa.config.Config;
  */
 public final class TokenProvider {
 
-    private static volatile String cachedToken;
+    private static volatile Secret cachedToken;
 
     private TokenProvider() {
     }
 
-    public static String token() {
-        String local = cachedToken;
+    public static Secret token() {
+        Secret local = cachedToken;
         if (local == null) {
             synchronized (TokenProvider.class) {
                 local = cachedToken;
@@ -29,7 +30,7 @@ public final class TokenProvider {
                         throw new IllegalStateException(
                                 "Could not obtain auth token: " + response.rawBody());
                     }
-                    local = response.body().getToken();
+                    local = Secret.of(response.body().getToken());
                     cachedToken = local;
                 }
             }

@@ -4,6 +4,7 @@ import com.flamingo.qa.api.booker.BookingClient;
 import com.flamingo.qa.api.booker.TokenProvider;
 import com.flamingo.qa.api.booker.model.Booking;
 import com.flamingo.qa.api.booker.model.BookingId;
+import com.flamingo.qa.config.Secret;
 import com.flamingo.qa.data.TestDataFactory;
 import com.flamingo.qa.junit.ApiTest;
 import io.qameta.allure.Description;
@@ -48,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Feature("Authorization")
 class BookingAuthorizationTest {
 
-    private static final String FORGED_TOKEN = "not-a-real-token-0000";
+    private static final Secret FORGED_TOKEN = Secret.of("not-a-real-token-0000");
 
     private final BookingClient bookings = new BookingClient();
 
@@ -201,7 +202,7 @@ class BookingAuthorizationTest {
     @DisplayName("A valid token authorises the protected verbs")
     void validTokenAuthorisesProtectedVerbs() {
         int id = seedBooking();
-        String token = TokenProvider.token();
+        Secret token = TokenProvider.token();
 
         assertThat(bookings.update(id, TestDataFactory.randomBooking(), token).statusCode())
                 .as("PUT with a valid token").isEqualTo(200);

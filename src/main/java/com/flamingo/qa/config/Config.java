@@ -10,12 +10,12 @@ public final class Config {
         return ConfigLoader.get("booker.base.url");
     }
 
-    public static String bookerUsername() {
-        return ConfigLoader.get("booker.username");
+    public static Secret bookerUsername() {
+        return Secret.of(ConfigLoader.get("booker.username"));
     }
 
-    public static String bookerPassword() {
-        return ConfigLoader.get("booker.password");
+    public static Secret bookerPassword() {
+        return Secret.of(ConfigLoader.get("booker.password"));
     }
 
     public static String graphQlEndpoint() {

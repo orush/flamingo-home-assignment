@@ -3,6 +3,7 @@ package com.flamingo.qa.api;
 import com.flamingo.qa.api.booker.AuthClient;
 import com.flamingo.qa.api.booker.model.AuthResponse;
 import com.flamingo.qa.config.Config;
+import com.flamingo.qa.config.Secret;
 import com.flamingo.qa.junit.ApiTest;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
@@ -31,7 +32,7 @@ class BookerAuthTest {
     @DisplayName("Bad password returns HTTP 200 with a 'Bad credentials' reason, not 401")
     void rejectsBadPasswordWithReasonNotUnauthorized() {
         ApiResponse<AuthResponse> response =
-                authClient.createToken(Config.bookerUsername(), "definitely-wrong");
+                authClient.createToken(Config.bookerUsername(), Secret.of("definitely-wrong"));
 
         // Documented quirk of this API: the failure is reported in the body,
         // not the status line.

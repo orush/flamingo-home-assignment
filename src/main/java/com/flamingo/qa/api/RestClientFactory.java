@@ -1,7 +1,7 @@
 package com.flamingo.qa.api;
 
 import com.flamingo.qa.config.Config;
-import io.qameta.allure.restassured.AllureRestAssured;
+import com.flamingo.qa.reporting.RedactingAllureFilter;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
@@ -56,7 +56,7 @@ public final class RestClientFactory {
                 .setBaseUri(baseUri)
                 .setContentType(ContentType.JSON)
                 .setAccept(ACCEPT_JSON)
-                .addFilter(new AllureRestAssured())
+                .addFilter(new RedactingAllureFilter())
                 .build());
     }
 }

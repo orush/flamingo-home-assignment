@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.flamingo.qa.api.booker.BookingClient;
 import com.flamingo.qa.api.booker.TokenProvider;
 import com.flamingo.qa.api.booker.model.Booking;
+import com.flamingo.qa.config.Secret;
 import com.flamingo.qa.data.TestDataFactory;
 import com.flamingo.qa.junit.ApiTest;
 import io.qameta.allure.Description;
@@ -48,7 +49,7 @@ class BookingNegativeTest {
 
     private final BookingClient bookings = new BookingClient();
 
-    private String token() {
+    private Secret token() {
         return TokenProvider.token();
     }
 
