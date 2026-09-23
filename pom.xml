@@ -88,6 +88,13 @@
       <version>${junit.platform.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- Runs example tests in isolation, to test the framework's own JUnit extensions. -->
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-testkit</artifactId>
+      <version>${junit.platform.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

@@ -6,9 +6,11 @@ import com.flamingo.qa.api.graphql.GraphQlResponse;
 import com.flamingo.qa.api.graphql.QueryLoader;
 import com.flamingo.qa.api.graphql.model.Movie;
 import com.flamingo.qa.junit.ApiTest;
+import com.flamingo.qa.junit.RetryOnNetworkError;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +31,8 @@ class GraphQlPositiveTest {
                 "movies-page.graphql", Map.of("first", first, "skip", skip)));
     }
 
-    @ApiTest
+    @RetryOnNetworkError
+    @Tag("api")
     @DisplayName("A page size limits the list to exactly that many movies")
     void limitsListToRequestedPageSize() {
         GraphQlResponse response = moviesPage(3, 0);

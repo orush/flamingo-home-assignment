@@ -6,9 +6,11 @@ import com.flamingo.qa.api.booker.model.Booking;
 import com.flamingo.qa.api.booker.model.CreateBookingResponse;
 import com.flamingo.qa.data.TestDataFactory;
 import com.flamingo.qa.junit.ApiTest;
+import com.flamingo.qa.junit.RetryOnNetworkError;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 
 import java.util.Map;
 
@@ -41,7 +43,8 @@ class BookingCrudTest {
         return created.body().getBookingid();
     }
 
-    @ApiTest
+    @RetryOnNetworkError
+    @Tag("api")
     @DisplayName("Creating a booking returns an id and echoes the submitted payload")
     void createsBooking() {
         Booking booking = TestDataFactory.randomBooking();
