@@ -14,7 +14,7 @@ home assignment. It covers three targets:
 
 The assignment grades framework architecture at 40%, code quality at 30%, test
 design at 20% and documentation at 10%. The design optimises for that weighting:
-48 well-chosen tests on top of a framework whose structure is legible
+50 well-chosen tests on top of a framework whose structure is legible
 without reading any test body.
 
 Scope is the **full bonus build**: every "nice to have" in the brief (Allure,
@@ -72,11 +72,24 @@ extract it from the page's JavaScript bundles. Put the result in `.env` as
 | `movie(where:{id:"doesnotexist"})` | **200**, `data.movie: null`, **no** `errors` key |
 | Malformed query (syntax error) | **400**, `data: null` + `errors[].message` containing `ParseError` |
 | Unknown field on a known type | **400**, `errors[0].message` names the field, `data: null` |
+| Wrong variable type, omitted required variable, `first: -1` | **400**, `data: null`, validation message |
+| Mutation on a **missing** record | **200**, `data.deleteMovie: null`, error `not allowed`, `path` under `extensions` |
+| Mutation on an **existing** record | **403**, `data: null`, `Mutation failed due to permission errors` |
 
 The brief asks us to verify whether GraphQL returns 200 or an errors array.
-The answer for Hygraph is **both, depending on the failure class**: a
-semantically valid query for a missing entity is 200 with a null field, while
-parse and validation failures are 400. Tests assert each shape precisely.
+The answer for Hygraph depends on **the phase in which the request fails**, in
+line with the GraphQL-over-HTTP specification:
+
+- **Request phase** (parse or validation failure): the request never executes,
+  so the status is 400 and `data` is `null`.
+- **Execution phase**: the status is 200 and problems are reported per field.
+  A missing entity is simply a `null` field with no `errors` at all; a denied
+  field is a `null` field *plus* an `errors` entry — the partial-result shape.
+- **Authorization**: a mutation that reaches an existing record fails a
+  permission check and the whole request is rejected with 403.
+
+One deviation from the specification: field errors carry `path` under
+`extensions` instead of as a top-level key. It is recorded as a finding.
 
 ### DemoQA (`${UI_BASE_URL}`)
 
@@ -314,7 +327,8 @@ Every assertion lives in the test and uses AssertJ.
 
 ## 7. Test inventory
 
-Total: 48 test methods (34 REST + 7 GraphQL + 7 UI). The brief's minimums are
+Total: 50 test methods (31 REST + 12 GraphQL + 7 UI); parameterized tests make the
+execution count higher. The brief's minimums are
 3 API CRUD, 5 GraphQL and 2 UI, so each area clears its minimum with margin
 without padding. The data-driven create test is one method producing several
 invocations.
@@ -365,7 +379,7 @@ This keeps the build's pass/fail signal meaningful — it reflects whether *our
 framework* works — while defects in the service under test stay loud rather
 than being normalised into green.
 
-### API — Restful Booker (34)
+### API — Restful Booker (31)
 
 | Test | Asserts |
 | --- | --- |
@@ -395,17 +409,22 @@ than being normalised into green.
 | `PUT` / `PATCH` / `DELETE` with a forged token | 403 on each |
 | Valid token authorises the protected verbs | 200 / 200 / 201 |
 
-### GraphQL — Hygraph (7)
+### GraphQL — Hygraph (12)
 
 | Test | Asserts |
 | --- | --- |
-| Pagination via `first: $n` | Exactly n items; `moviesConnection.aggregate.count` >= n |
-| Single movie by id | 200, id matches, title non-blank |
-| Variables-driven query (`first` / `skip`) | Distinct page contents, variables sent as a map |
-| Fragment + nested `publishedBy { name }` | Fragment fields resolved, nested name non-blank |
-| Non-existent id | **200**, `data.movie` null, no `errors` |
-| Malformed query | **400**, `errors[].message` present, `data` null |
-| Unknown field | **400**, error message names the field, `data` null |
+| Page size limits the list | Exactly n items; aggregate count >= n |
+| Paging visits every movie exactly once | Pages over `orderBy: id_ASC` cover the collection with no gaps or duplicates |
+| Single movie by id | Equals the same movie taken from the list |
+| One document, different variables | Identical document text yields both results; no id ever appears in it |
+| Fragment + nested `publishedBy { name }` | Fragment fields and nested publisher resolved on every row |
+| Non-existent id | 200, `data.movie` null, no `errors` key |
+| Mutation on a missing record | 200, `data.deleteMovie` null, field error `not allowed` |
+| Mutation on an existing record | 403, `data` null, permission error, record still present afterwards |
+| Malformed query | 400, `ParseError`, `data` null |
+| Unknown field | 400, message names the field and type, `data` null |
+| Invalid variables (parameterized, 3 cases) | 400 for wrong type, omitted required variable, negative page size |
+| FINDING: field error `path` not top-level | Spec requires a top-level `path`; Hygraph nests it under `extensions` |
 
 ### UI — DemoQA (7)
 

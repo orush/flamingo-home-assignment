@@ -2,13 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 23 scenario tests (plus 9 framework self-tests) on reusable infrastructure.
+**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 50 scenario tests (plus 10 framework self-tests) on reusable infrastructure.
 
 **Architecture:** Single Maven module. All reusable framework code lives in `src/main/java` (config, REST/GraphQL clients, page objects, JUnit extensions); `src/test/java` holds only test scenarios. Test wiring is by composition — `@ApiTest` / `@UiTest` meta-annotations plus a `ParameterResolver` that injects Playwright `Page` objects — rather than inheritance.
 
 **Tech Stack:** Java 17 (release level), Maven, JUnit 5, REST Assured, Playwright for Java, AssertJ, Jackson, Lombok, Allure, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-09-22-qa-automation-framework-design.md`
+
+> **Status:** Tasks 1–6 are implemented. Where the shipped code differs from the
+> code blocks in those tasks, **the code is the source of truth** — each
+> deviation was driven by live behaviour of the services and is explained in its
+> commit message and in the design doc.
 
 ## Global Constraints
 
@@ -3273,7 +3278,7 @@ Add `@RetryOnFailure(2)` **in place of** `@ApiTest` on only these, and add
 `@Tag("api")` alongside since `@RetryOnFailure` does not imply a tag:
 
 - `BookingCrudTest#createsBooking`
-- `GraphQlPositiveTest#limitsResultsToRequestedPageSize`
+- `GraphQlPositiveTest#limitsListToRequestedPageSize`
 
 Leave every negative test un-retried: those assert deterministic behaviour, and
 retrying them would mask a genuine API change.
@@ -3327,8 +3332,8 @@ allure.link.issue.pattern=https://github.com/orush/flamingo-home-assignment/issu
 - [ ] **Step 3: Run the full suite in parallel**
 
 Run: `./mvnw clean test`
-Expected: 32 test methods pass (23 scenario tests + 9 framework tests), 0
-failures. Wall-clock should be noticeably shorter than serial.
+Expected, with findings excluded (`-DexcludedGroups=finding`): 53 test methods
+pass (43 scenario + 10 framework), 0 failures. Wall-clock should be noticeably shorter than serial.
 
 If UI tests now fail intermittently, the most likely cause is `PlaywrightFactory`
 state leaking across threads. Verify each thread gets its own `Playwright` —
@@ -3351,9 +3356,9 @@ attachments and that GraphQL tests carry query and variables attachments.
 ./mvnw test -Dgroups=ui
 ```
 
-Expected: 16 methods tagged `api` (Surefire reports 19 executions, because the
-data-driven test contributes 4) and 8 methods tagged `ui` (the 7 scenarios plus
-the injection smoke test).
+Expected: 43 methods tagged `api` (48 executions — parameterized tests expand),
+of which the 7 tagged `finding` fail by design; and 8 methods tagged `ui` (the 7
+scenarios plus the injection smoke test).
 
 NOTE: `ConfigLoaderTest` and `RetryExtensionTest` carry no tag, so they run under
 `./mvnw clean test` but under neither group filter. That is intended — they test
@@ -3674,8 +3679,8 @@ writes to `.env` before the test step.
 
 ## Test Strategy
 
-48 scenario tests: 34 against Restful Booker, 7 against Hygraph GraphQL, 7
-against DemoQA. A further 9 tests cover the framework itself (config resolution, the
+50 scenario test methods: 31 against Restful Booker, 12 against Hygraph GraphQL,
+7 against DemoQA. A further 10 tests cover the framework itself (config resolution, the
 retry extension, Playwright injection), for 32 in total.
 The brief's minimums are 3, 5 and 2 — each area clears its minimum with margin,
 without padding, because the brief asks for quality over quantity and weights
@@ -3715,13 +3720,36 @@ Every row here was verified with curl before the assertion was written.
 | GraphQL, non-existent id | errors array | **200**, `data.movie: null`, no `errors` key |
 | GraphQL, malformed query | 200 + errors | **400**, `data: null` + `errors[]` |
 | GraphQL, unknown field | 200 + errors | **400**, `errors[0].message` names the field |
+| GraphQL, mutation on a missing record | — | **200**, `data.deleteMovie: null` + field error |
+| GraphQL, mutation on an existing record | — | **403**, `data: null`, permission error |
 
 The brief asks specifically whether GraphQL returns 200 with `data: null` or an
-errors array. For Hygraph the answer is **both, depending on the failure class**:
-a semantically valid query for a missing entity is 200 with a null field, while
-parse and validation failures are 400. Because error and success bodies differ in
+errors array. For Hygraph the answer depends on **when the request fails**. A
+request that fails parsing or validation never executes: 400, `data: null`. A
+request that executes returns 200 and reports problems per field — a missing
+entity is just a `null` field with no `errors`, while a denied field is a `null`
+field *plus* an `errors` entry, GraphQL's partial-result shape. A mutation that
+reaches an existing record fails a permission check: 403.
+
+The mutation case was a lesson in probing properly: an early probe used a fake
+id and only ever saw the 200 shape. The test, using a real id, got 403. Whether
+the target exists changes the whole response. Because error and success bodies differ in
 shape, `ApiResponse<T>` exposes `rawBody()` alongside the mapped `body()`, and
 `GraphQlResponse` distinguishes an absent `data` key from a JSON-null one.
+
+### A 418 that had nothing to do with teapots
+
+Every Restful Booker write failed with `418 I'm a Teapot`, while the identical
+payload sent from curl succeeded. Serialisation was byte-identical, and a
+transient throttling window briefly made rate limiting look like the answer.
+Logging the full exchange showed the real cause: REST Assured expands
+`ContentType.JSON` on the `Accept` header into
+`application/json, application/javascript, text/javascript, text/json`, and
+Restful Booker answers 418 to any `Accept` other than exactly
+`application/json`. The fix is one line — pass the literal string — and a comment
+in `RestClientFactory`, because nothing about a 418 suggests content negotiation.
+The failure was 100% deterministic, which is also why retries are scoped narrowly
+here: a blanket retry would have hidden it.
 
 ### Screenshot-on-failure that never fires
 
@@ -3792,18 +3820,19 @@ report. They are tagged `finding` so the gating build can exclude them
 The alternative — asserting the buggy behaviour so the suite stays green —
 normalises the defect and quietly bakes it into the expected contract.
 
-| # | Severity | Finding |
-| --- | --- | --- |
-| 1 | Critical | `POST /booking` accepts unauthenticated writes (200, expected 401/403). Anyone can write to the booking store. |
-| 2 | Critical | `GET /booking` enumerates every booking id with no token (200). |
-| 3 | Critical | `GET /booking/{id}` returns guest first and last names with no token (200). Combined with #2, every guest record is readable by anyone. |
-| 4 | Critical | Unparseable dates are accepted and **persisted as `0NaN-aN-aN`**. The request succeeds and corrupt data reaches the store, where every later reader must cope with it. |
-| 5 | Critical | A non-numeric `totalprice` is accepted and **silently stored as `null`** — neither rejected nor preserved, so a booking ends up with no price and the caller is never told. |
-| 6 | Normal | An empty create body, or one missing a required field, returns `500 Internal Server Error` instead of `400`. A client mistake is reported as a server fault. |
-| 7 | Normal | No range validation: a checkout date before checkin, and a negative `totalprice`, are both accepted. |
-| 8 | Low | `PUT`/`PATCH`/`DELETE` against a missing booking return `405 Method Not Allowed` rather than `404 Not Found`. |
-| 9 | Low | `DELETE /booking/{id}` answers a successful delete with `201 Created` rather than `200`/`204`. |
-| 10 | Low | `POST /auth` reports bad credentials as `200` with `{"reason":"Bad credentials"}` instead of `401`. |
+| # | Service | Severity | Finding |
+| --- | --- | --- | --- |
+| 1 | Restful Booker | Critical | `POST /booking` accepts unauthenticated writes (200, expected 401/403). Anyone can write to the booking store. |
+| 2 | Restful Booker | Critical | `GET /booking` enumerates every booking id with no token (200). |
+| 3 | Restful Booker | Critical | `GET /booking/{id}` returns guest first and last names with no token (200). Combined with #2, every guest record is readable by anyone. |
+| 4 | Restful Booker | Critical | Unparseable dates are accepted and **persisted as `0NaN-aN-aN`**. The request succeeds and corrupt data reaches the store, where every later reader must cope with it. |
+| 5 | Restful Booker | Critical | A non-numeric `totalprice` is accepted and **silently stored as `null`** — neither rejected nor preserved, so a booking ends up with no price and the caller is never told. |
+| 6 | Restful Booker | Normal | An empty create body, or one missing a required field, returns `500 Internal Server Error` instead of `400`. A client mistake is reported as a server fault. |
+| 7 | Restful Booker | Normal | No range validation: a checkout date before checkin, and a negative `totalprice`, are both accepted. |
+| 8 | Restful Booker | Low | `PUT`/`PATCH`/`DELETE` against a missing booking return `405 Method Not Allowed` rather than `404 Not Found`. |
+| 9 | Restful Booker | Low | `DELETE /booking/{id}` answers a successful delete with `201 Created` rather than `200`/`204`. |
+| 10 | Restful Booker | Low | `POST /auth` reports bad credentials as `200` with `{"reason":"Bad credentials"}` instead of `401`. |
+| 11 | Hygraph | Low | Field errors carry `path` under `extensions` instead of as the top-level key the GraphQL specification requires, so spec-following clients cannot attach an error to the field that failed. |
 
 Findings 1-3 are documented behaviour of this service, so they are design
 defects rather than regressions. Enforcement on `PUT`, `PATCH` and `DELETE` is
@@ -3861,8 +3890,9 @@ git push
 
 ## Final verification
 
-- [ ] `./mvnw clean test` passes: 32 methods (23 scenario + 9 framework), 0 failures
-- [ ] `./mvnw test -Dgroups="api"` runs 16 tagged methods / 19 executions
+- [ ] `./mvnw clean test -DexcludedGroups=finding` passes: 53 methods, 0 failures
+- [ ] `./mvnw test -Dgroups="finding"` runs 7 methods, all failing with defect-report messages
+- [ ] `./mvnw test -Dgroups="api"` runs 43 tagged methods / 48 executions
 - [ ] `./mvnw test -Dgroups="ui"` runs 8 tagged methods
 - [ ] A deliberately failed UI test produces a screenshot **and** a trace
 - [ ] `./mvnw allure:report` generates a report with request/response attachments
