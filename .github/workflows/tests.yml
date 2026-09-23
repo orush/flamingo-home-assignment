@@ -19,7 +19,9 @@ concurrency:
 jobs:
   test:
     name: Test suite
-    runs-on: ubuntu-latest
+    # Pinned: Playwright's --with-deps installs OS packages per distribution, and
+    # ubuntu-latest moves to a new Ubuntu release on its own schedule.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -72,10 +74,12 @@ jobs:
 
       # Findings assert what a correct service would do, so they fail by design.
       # They never gate the build; their failures are the defect report.
+      # failure.ignore lets Maven exit cleanly while the tests still record as
+      # failed; continue-on-error covers anything else, such as a build error.
       - name: Run the findings (defect report)
         if: always()
         continue-on-error: true
-        run: ./mvnw -B test -Dgroups=finding
+        run: ./mvnw -B test -Dgroups=finding -Dmaven.test.failure.ignore=true
 
       - name: Keep the findings' Surefire reports
         if: always()

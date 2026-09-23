@@ -10,7 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-qa-automation-framework-design.md`
 
-> **Status:** Tasks 1–11 are implemented. Where the shipped code differs from the
+> **Status:** All 13 tasks are implemented. The shipped `README.md` and
+> `.github/workflows/tests.yml` supersede the drafts in Tasks 12 and 13. Where the shipped code differs from the
 > code blocks in those tasks, **the code is the source of truth** — each
 > deviation was driven by live behaviour of the services and is explained in its
 > commit message and in the design doc.
