@@ -11,7 +11,9 @@
 **Spec:** `docs/superpowers/specs/2026-09-22-qa-automation-framework-design.md`
 
 > **Status:** All 13 tasks are implemented. The shipped `README.md` and
-> `.github/workflows/tests.yml` supersede the drafts in Tasks 12 and 13. Where the shipped code differs from the
+> `.github/workflows/tests.yml` supersede the drafts in Tasks 12 and 13. Since
+> then the framework self-tests have moved to the `framework` test package and
+> run in their own workflow, `.github/workflows/framework.yml`. Where the shipped code differs from the
 > code blocks in those tasks, **the code is the source of truth** — each
 > deviation was driven by live behaviour of the services and is explained in its
 > commit message and in the design doc.

@@ -1,14 +1,17 @@
-package com.flamingo.qa.config;
+package com.flamingo.qa.framework;
 
+import com.flamingo.qa.config.Secret;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+@Tag("framework")
 @Epic("Framework")
 @Feature("Configuration")
 class SecretTest {

@@ -1,8 +1,10 @@
-package com.flamingo.qa.api;
+package com.flamingo.qa.framework;
 
+import com.flamingo.qa.api.RestClientFactory;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -13,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+@Tag("framework")
 @Epic("Framework")
 @Feature("HTTP client")
 class RestClientTimeoutTest {

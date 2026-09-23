@@ -34,7 +34,7 @@ public final class ThirdPartyBlocker {
      * as {@code data:} and {@code blob:}. A look-alike such as
      * {@code evil-example.com} does not match {@code example.com}.
      */
-    static boolean isAllowed(String url, String firstPartyHost) {
+    public static boolean isAllowed(String url, String firstPartyHost) {
         Matcher matcher = HTTP_HOST.matcher(url);
         if (!matcher.find()) {
             return true; // not an http(s) request, so nothing leaves for a third party

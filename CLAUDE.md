@@ -12,6 +12,7 @@ Always run with `clean`: without it, stale files in `target/test-classes`
 
 ```bash
 ./mvnw clean test -DexcludedGroups=finding   # the build's verdict: must be green (93 executions)
+./mvnw clean test -Dgroups=framework         # framework self-tests only (36 executions)
 ./mvnw clean test -Dgroups=finding           # defect report: 8 tests that FAIL BY DESIGN
 ./mvnw clean test -Dgroups=api               # REST + GraphQL
 ./mvnw clean test -Dgroups=ui                # DemoQA
@@ -67,7 +68,9 @@ That is expected; only a failure outside `@Tag("finding")` is a regression.
   elements, use `extracting(...).containsExactly(...)` or `satisfiesExactly(...)`
   instead of navigating.
 - Every test has `@DisplayName`; classes carry `@Epic` / `@Feature` (and
-  `@Story`). Framework self-tests use `@Epic("Framework")`.
+  `@Story`). Framework self-tests live in the `com.flamingo.qa.framework` test
+  package and carry `@Tag("framework")` plus `@Epic("Framework")`; a new one
+  without the tag would silently move to the scenario workflow.
 - Reusable, valid GraphQL queries go in `src/main/resources/graphql/*.graphql`;
   deliberately invalid ones stay inline in the test that breaks them.
 - Tests seed their own data and never depend on each other. They do not clean
@@ -138,12 +141,15 @@ delete probes before committing.
 
 ## CI
 
-`.github/workflows/tests.yml` runs on `ubuntu-24.04` (pinned deliberately). It
-builds `.env` from secrets, runs the gating step, runs the findings step
+Two workflows on `ubuntu-24.04` (pinned deliberately), sharing the composite
+action `.github/actions/setup` (JDK 17, `.env` from secrets passed as inputs,
+Chromium). `.github/workflows/tests.yml` runs the scenario gating step
+(`-DexcludedGroups=finding,framework`, 57 executions), runs the findings step
 (`-Dmaven.test.failure.ignore=true` plus `continue-on-error`), writes a run
 summary, runs the credential guard, and uploads the Allure report, raw results
-and failure diagnostics only if the guard passes. A green run has no
-annotations.
+and failure diagnostics only if the guard passes.
+`.github/workflows/framework.yml` does the same for `-Dgroups=framework`, with
+`framework-`-prefixed artifacts. A green run has no annotations.
 
 ## Keep in sync
 

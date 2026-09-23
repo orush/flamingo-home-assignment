@@ -125,7 +125,8 @@ boundary is enforced by the compiler rather than by convention.
 
 ```
 flamingo-home-assignment/
-├── .github/workflows/tests.yml
+├── .github/workflows/  tests.yml (scenarios), framework.yml (self-tests)
+├── .github/actions/setup/  shared JDK, .env and Chromium setup
 ├── .mvn/wrapper/ + mvnw + mvnw.cmd
 ├── .env.example          # documented keys, placeholder values (committed)
 ├── .env                  # real values (gitignored, never committed)
@@ -153,7 +154,8 @@ flamingo-home-assignment/
         ├── java/com/flamingo/qa/
         │   ├── api/     BookerAuthTest, BookingCrudTest, BookingNegativeTest
         │   ├── graphql/ GraphQlPositiveTest, GraphQlNegativeTest
-        │   └── ui/      PracticeFormTest, WebTablesTest
+        │   ├── ui/      PracticeFormTest, WebTablesTest
+        │   └── framework/  self-tests of the framework, @Tag("framework")
         └── resources/fixtures/  avatar.png
 ```
 
@@ -555,7 +557,13 @@ invocations.
 - `maven-surefire-report-plugin` stays enabled; the brief accepts a Surefire
   HTML report as the deliverable.
 
-### 8.4 CI — `.github/workflows/tests.yml`
+### 8.4 CI — `.github/workflows/tests.yml` and `framework.yml`
+
+> **As shipped:** the framework self-tests live in the `framework` test package,
+> carry `@Tag("framework")`, and run in their own workflow, `framework.yml`.
+> `tests.yml` excludes them (`-DexcludedGroups=finding,framework`). Both share
+> the composite action `.github/actions/setup`. The bullets below are the
+> original plan.
 
 - Triggers: `push`, `pull_request`, `workflow_dispatch`.
 - `ubuntu-latest`, Temurin 17, Maven cache keyed on `pom.xml`.

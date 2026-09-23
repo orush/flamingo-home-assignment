@@ -1,6 +1,7 @@
 # QA Automation Test Suite
 
 [![Tests](https://github.com/orush/flamingo-home-assignment/actions/workflows/tests.yml/badge.svg)](https://github.com/orush/flamingo-home-assignment/actions/workflows/tests.yml)
+[![Framework self-tests](https://github.com/orush/flamingo-home-assignment/actions/workflows/framework.yml/badge.svg)](https://github.com/orush/flamingo-home-assignment/actions/workflows/framework.yml)
 
 REST, GraphQL and UI test automation for three public services — Restful Booker,
 the Hygraph GraphQL example API and DemoQA — built on JUnit 5, REST Assured,
@@ -78,6 +79,9 @@ Beyond the brief's three commands:
 ```bash
 # The build's verdict: everything except the known-defect tests. Must be green.
 ./mvnw clean test -DexcludedGroups="finding"
+
+# Only the framework self-tests (CI runs them in their own workflow)
+./mvnw clean test -Dgroups="framework"
 
 # The defect report: only the known-defect tests. These are EXPECTED to fail;
 # each failure message names the input, the expected response and what happened.
@@ -194,6 +198,10 @@ self-test exercises.
 
 Page objects expose actions and data and never assert. Every check lives in a
 test, so one page object serves positive and negative tests alike.
+
+In `src/test/java`, the scenarios sit in `api`, `graphql` and `ui`, and the
+framework's own tests sit together in `framework`. Each of those classes also
+carries `@Tag("framework")`, which is how the two CI workflows split them.
 
 ## Challenges & Solutions
 
@@ -349,12 +357,18 @@ stop reporting a Jackson 2/3 ambiguity that did not exist.
 
 ## Test Report
 
-Every CI run publishes three artifacts: `allure-report` (a single HTML file),
+CI has two workflows. [Tests](https://github.com/orush/flamingo-home-assignment/actions/workflows/tests.yml)
+runs the scenarios and the findings;
+[Framework self-tests](https://github.com/orush/flamingo-home-assignment/actions/workflows/framework.yml)
+runs the `framework` tests, so a broken framework is told apart from a broken
+service at a glance. Both share their setup through `.github/actions/setup`.
+
+Every Tests run publishes three artifacts: `allure-report` (a single HTML file),
 `test-results` (raw Allure results and Surefire reports) and
 `failure-diagnostics` (screenshots and Playwright traces, which always include
-the failing sorting finding). For viewers signed in to GitHub, the run page
-also summarises the suite and lists each finding with its defect message. Open
-[the latest run](https://github.com/orush/flamingo-home-assignment/actions/workflows/tests.yml).
+the failing sorting finding). The framework workflow publishes the same three,
+prefixed `framework-`. For viewers signed in to GitHub, the run page also
+summarises the suite and lists each finding with its defect message.
 
 A CI run — green, with no warnings or errors. The findings run in a separate,
 non-gating step:

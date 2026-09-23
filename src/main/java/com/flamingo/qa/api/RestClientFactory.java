@@ -43,8 +43,8 @@ public final class RestClientFactory {
         return jsonSpec(Config.graphQlEndpoint(), Config.timeoutMillis());
     }
 
-    /** Package-private so tests can use a short timeout without touching global config. */
-    static RequestSpecification jsonSpec(String baseUri, int timeoutMillis) {
+    /** Public so framework self-tests can use a short timeout without touching global config. */
+    public static RequestSpecification jsonSpec(String baseUri, int timeoutMillis) {
         return given().spec(new RequestSpecBuilder()
                 .setConfig(config(timeoutMillis))
                 .setBaseUri(baseUri)

@@ -1,4 +1,4 @@
-package com.flamingo.qa.ui;
+package com.flamingo.qa.framework;
 
 import com.flamingo.qa.config.Config;
 import com.flamingo.qa.junit.Actor;
@@ -7,10 +7,12 @@ import com.microsoft.playwright.Page;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 /** Proves the UI plumbing itself: injection, isolation and network policy. */
+@Tag("framework")
 @Epic("Framework")
 @Feature("UI plumbing")
 class PlaywrightInjectionSmokeTest {

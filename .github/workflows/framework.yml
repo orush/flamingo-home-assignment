@@ -1,4 +1,4 @@
-name: Tests
+name: Framework self-tests
 
 on:
   push:
@@ -10,19 +10,17 @@ on:
 permissions:
   contents: read
 
-# A newer push supersedes an older run on the same ref. Cancelling the old one
-# also spares the public services under test a redundant load.
 concurrency:
-  group: tests-${{ github.ref }}
+  group: framework-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: Scenario suite
-    # Pinned: Playwright's --with-deps installs OS packages per distribution, and
-    # ubuntu-latest moves to a new Ubuntu release on its own schedule.
+    name: Framework self-tests
+    # Pinned for the same reason as tests.yml: Playwright's --with-deps installs
+    # OS packages per distribution.
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
 
     steps:
       - name: Check out
@@ -30,6 +28,8 @@ jobs:
         with:
           persist-credentials: false
 
+      # The self-tests need the environment too: one checks that every required
+      # key resolves, and the Playwright smoke test loads the real site.
       - name: Set up JDK, .env and Chromium
         uses: ./.github/actions/setup
         with:
@@ -39,27 +39,8 @@ jobs:
           graphql-endpoint: ${{ secrets.GRAPHQL_ENDPOINT }}
           ui-base-url: ${{ secrets.UI_BASE_URL }}
 
-      # The build's verdict: every scenario except the known-defect tests.
-      # Framework self-tests run in their own workflow, framework.yml.
-      - name: Run the suite
-        run: ./mvnw -B clean test -DexcludedGroups=finding,framework
-
-      - name: Keep the suite's Surefire reports
-        if: always()
-        run: if [ -d target/surefire-reports ]; then mv target/surefire-reports target/surefire-reports-gating; fi
-
-      # Findings assert what a correct service would do, so they fail by design.
-      # They never gate the build; their failures are the defect report.
-      # failure.ignore lets Maven exit cleanly while the tests still record as
-      # failed; continue-on-error covers anything else, such as a build error.
-      - name: Run the findings (defect report)
-        if: always()
-        continue-on-error: true
-        run: ./mvnw -B test -Dgroups=finding -Dmaven.test.failure.ignore=true
-
-      - name: Keep the findings' Surefire reports
-        if: always()
-        run: if [ -d target/surefire-reports ]; then mv target/surefire-reports target/surefire-reports-findings; fi
+      - name: Run the framework self-tests
+        run: ./mvnw -B clean test -Dgroups=framework
 
       - name: Generate the Allure report
         if: always()
@@ -84,14 +65,13 @@ jobs:
           python3 .github/scripts/check_no_secrets.py
           target/allure-results
           target/site/allure-maven-plugin
-          target/surefire-reports-gating
-          target/surefire-reports-findings
+          target/surefire-reports
 
       - name: Upload the Allure report
         if: always() && steps.secret-check.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
-          name: allure-report
+          name: framework-allure-report
           path: target/site/allure-maven-plugin/index.html
           retention-days: 14
 
@@ -99,18 +79,17 @@ jobs:
         if: always() && steps.secret-check.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
-          name: test-results
+          name: framework-test-results
           path: |
             target/allure-results
-            target/surefire-reports-gating
-            target/surefire-reports-findings
+            target/surefire-reports
           retention-days: 14
 
       - name: Upload failure screenshots and traces
         if: always() && steps.secret-check.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
-          name: failure-diagnostics
+          name: framework-failure-diagnostics
           path: |
             target/screenshots
             target/traces

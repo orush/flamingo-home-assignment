@@ -4,7 +4,8 @@
 Gating tests and findings are reported separately. Findings are tests that
 assert what a correct service would do, so they fail by design; each failure
 message is the defect report, and it is listed here so a reviewer sees the
-defects on the run page without downloading anything.
+defects on the run page without downloading anything. A run with no findings,
+such as the framework self-tests, gets no findings row or section.
 
 Usage: summarise_results.py RESULTS_DIR >> "$GITHUB_STEP_SUMMARY"
 """
@@ -41,7 +42,8 @@ def main(results_dir):
     print("| Run | Total | Passed | Failed | Broken | Retried attempts |")
     print("| --- | ---: | ---: | ---: | ---: | ---: |")
     print(f"| Gating — must pass | {len(gating)} | {g['passed']} | {g['failed']} | {g['broken']} | {g['skipped']} |")
-    print(f"| Findings — fail by design | {len(findings)} | {f['passed']} | {f['failed']} | {f['broken']} | {f['skipped']} |")
+    if findings:
+        print(f"| Findings — fail by design | {len(findings)} | {f['passed']} | {f['failed']} | {f['broken']} | {f['skipped']} |")
 
     broken_gate = [r for r in gating if r["status"] in ("failed", "broken")]
     if broken_gate:
@@ -49,6 +51,8 @@ def main(results_dir):
         for r in sorted(broken_gate, key=lambda r: r["name"]):
             print(f"- **{r['name']}** — {first_line(r)}")
 
+    if not findings:
+        return
     print("\n### Findings: defects in the systems under test\n")
     for r in sorted(findings, key=lambda r: r["name"]):
         mark = "❌" if r["status"] in ("failed", "broken") else "✅ now passing — the defect may be fixed"

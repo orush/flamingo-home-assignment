@@ -1,13 +1,16 @@
-package com.flamingo.qa.ui;
+package com.flamingo.qa.framework;
 
+import com.flamingo.qa.ui.ThirdPartyBlocker;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag("framework")
 @Epic("Framework")
 @Feature("UI plumbing")
 class ThirdPartyBlockerTest {

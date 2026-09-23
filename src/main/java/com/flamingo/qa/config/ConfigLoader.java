@@ -52,7 +52,7 @@ public final class ConfigLoader {
                         + " in the environment.");
     }
 
-    static String toEnvKey(String key) {
+    public static String toEnvKey(String key) {
         return key.toUpperCase(Locale.ROOT).replace('.', '_');
     }
 
