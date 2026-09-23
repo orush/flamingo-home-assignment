@@ -6,7 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flamingo.qa.api.Json;
 import com.flamingo.qa.config.Secret;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -64,15 +65,15 @@ public final class Redactor {
     private static void mask(JsonNode node) {
         if (node.isObject()) {
             ObjectNode object = (ObjectNode) node;
-            Iterator<Map.Entry<String, JsonNode>> fields = object.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
+            List<String> sensitiveKeys = new ArrayList<>();
+            for (Map.Entry<String, JsonNode> field : object.properties()) {
                 if (isSensitive(field.getKey()) && !field.getValue().isContainerNode()) {
-                    field.setValue(object.textNode(MASK));
+                    sensitiveKeys.add(field.getKey());
                 } else {
                     mask(field.getValue());
                 }
             }
+            sensitiveKeys.forEach(key -> object.put(key, MASK));
         } else if (node.isArray()) {
             node.forEach(Redactor::mask);
         }

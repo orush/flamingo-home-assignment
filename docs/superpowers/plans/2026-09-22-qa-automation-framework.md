@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 50 scenario tests (plus 10 framework self-tests) on reusable infrastructure.
+**Goal:** Build a Java test-automation framework covering the Restful Booker REST API, the Hygraph GraphQL API, and the DemoQA web UI, delivering 50 scenario tests (plus 21 framework self-tests) on reusable infrastructure.
 
 **Architecture:** Single Maven module. All reusable framework code lives in `src/main/java` (config, REST/GraphQL clients, page objects, JUnit extensions); `src/test/java` holds only test scenarios. Test wiring is by composition — `@ApiTest` / `@UiTest` meta-annotations plus a `ParameterResolver` that injects Playwright `Page` objects — rather than inheritance.
 
@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-qa-automation-framework-design.md`
 
-> **Status:** Tasks 1–6 are implemented. Where the shipped code differs from the
+> **Status:** Tasks 1–7 are implemented. Where the shipped code differs from the
 > code blocks in those tasks, **the code is the source of truth** — each
 > deviation was driven by live behaviour of the services and is explained in its
 > commit message and in the design doc.
@@ -3342,8 +3342,8 @@ allure.link.issue.pattern=https://github.com/orush/flamingo-home-assignment/issu
 - [ ] **Step 3: Run the full suite in parallel**
 
 Run: `./mvnw clean test`
-Expected, with findings excluded (`-DexcludedGroups=finding`): 53 test methods
-pass (43 scenario + 10 framework), 0 failures. Wall-clock should be noticeably shorter than serial.
+Expected, with findings excluded (`-DexcludedGroups=finding`): 64 test methods
+pass (43 scenario + 21 framework), 0 failures. Wall-clock should be noticeably shorter than serial.
 
 If UI tests now fail intermittently, the most likely cause is `PlaywrightFactory`
 state leaking across threads. Verify each thread gets its own `Playwright` —
@@ -3367,8 +3367,8 @@ attachments and that GraphQL tests carry query and variables attachments.
 ```
 
 Expected: 43 methods tagged `api` (48 executions — parameterized tests expand),
-of which the 7 tagged `finding` fail by design; and 8 methods tagged `ui` (the 7
-scenarios plus the injection smoke test).
+of which the 7 tagged `finding` fail by design; and 9 methods tagged `ui` (the 7
+scenarios plus the two framework smoke tests).
 
 NOTE: `ConfigLoaderTest` and `RetryExtensionTest` carry no tag, so they run under
 `./mvnw clean test` but under neither group filter. That is intended — they test
@@ -3690,7 +3690,7 @@ writes to `.env` before the test step.
 ## Test Strategy
 
 50 scenario test methods: 31 against Restful Booker, 12 against Hygraph GraphQL,
-7 against DemoQA. A further 10 tests cover the framework itself (config resolution, the
+7 against DemoQA. A further 21 tests cover the framework itself (config resolution, the
 retry extension, Playwright injection), for 32 in total.
 The brief's minimums are 3, 5 and 2 — each area clears its minimum with margin,
 without padding, because the brief asks for quality over quantity and weights
@@ -3773,20 +3773,34 @@ step-by-step in Trace Viewer.
 
 ### DemoQA's ads intercept clicks
 
-Google ad frames on DemoQA shift the layout and swallow clicks on elements below
-the fold — the dominant flake source on that site. Rather than scattering
-`scrollIntoView` calls and retries through the page objects, each browser context
-aborts requests to ad and analytics hosts at the network layer. Faster, and
-deterministic.
+Ad frames on DemoQA shift the layout and swallow clicks — the dominant flake
+source on that site. A probe found about 25 ad and tracking hosts, and they
+rotate, so blocking them by name would go stale. Each browser context instead
+allows only first-party traffic and aborts everything else. On the web tables
+page that removes every ad iframe and cuts time to network idle by about 45%.
+Only the two tag loaders actually get aborted; nothing downstream is ever
+requested without them.
 
-### Playwright is not thread-safe
+### Closing browsers that belong to other threads
 
-A `Playwright` instance cannot be shared across threads, so the factory holds one
-per thread via `ThreadLocal`, with a fresh `BrowserContext` per test for
-isolation. Because worker threads outlive individual tests, there is no
-deterministic point at which those instances can be closed; they are released at
-JVM exit, which also terminates the driver process. A shutdown hook would be
-worse, since it would try to close thread-affine objects from the wrong thread.
+Playwright objects are unsynchronised, so each worker thread gets its own
+`Playwright` and `Browser`, with a fresh `BrowserContext` per test. The first
+design assumed that meant they could never be closed deterministically, since
+worker threads outlive tests. Reading Playwright's own JUnit integration showed
+otherwise: the constraint is no *concurrent* use, not thread affinity. Every
+instance is recorded, and an `AutoCloseable` in JUnit's root store closes them
+all once the run has finished. No browser processes survive a run.
+
+### Credentials in the test report
+
+Allure records every `@Step` method argument and every HTTP exchange in its raw
+results, which CI uploads — so the auth password and session tokens ended up in
+the artifact. Allure's `@Param(mode = MASKED)` looked like the fix, but it only
+masks the *rendered* report; the raw JSON still held the plain value. The fix
+has two parts: credentials became a `Secret` type that prints as `******`, and
+the stock REST Assured filter was replaced with one that masks credentials in
+bodies, headers and cookies. A full run now leaves no password, username or
+token anywhere in the output.
 
 ### The date picker
 
@@ -3900,10 +3914,10 @@ git push
 
 ## Final verification
 
-- [ ] `./mvnw clean test -DexcludedGroups=finding` passes: 53 methods, 0 failures
+- [ ] `./mvnw clean test -DexcludedGroups=finding` passes: 64 methods, 0 failures
 - [ ] `./mvnw test -Dgroups="finding"` runs 7 methods, all failing with defect-report messages
 - [ ] `./mvnw test -Dgroups="api"` runs 43 tagged methods / 48 executions
-- [ ] `./mvnw test -Dgroups="ui"` runs 8 tagged methods
+- [ ] `./mvnw test -Dgroups="ui"` runs 9 tagged methods
 - [ ] A deliberately failed UI test produces a screenshot **and** a trace
 - [ ] `./mvnw allure:report` generates a report with request/response attachments
 - [ ] GitHub Actions run is green

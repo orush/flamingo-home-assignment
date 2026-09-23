@@ -187,6 +187,21 @@ Typed accessors only (`Config.bookerBaseUrl()`, `Config.graphQlEndpoint()`,
 `Config.uiBaseUrl()`, `Config.browser()`, `Config.headless()`,
 `Config.timeoutMillis()`). No raw string keys in tests.
 
+**Credentials never reach a report either.** Allure writes step parameters and
+full HTTP exchanges into its raw results, which CI uploads as artifacts. Its
+`@Param(mode = MASKED)` hides a value in the rendered report only — the raw
+result JSON still holds it in plain text. So:
+
+- credentials are a `Secret` type whose `toString()` is a mask; the value is
+  reachable only through an explicit `reveal()` at the HTTP boundary, which also
+  protects log lines and assertion messages;
+- a `RedactingAllureFilter` replaces the stock REST Assured filter and masks
+  `username`, `password`, `token`, `Authorization` and cookie values in bodies,
+  headers and cookies before attaching them.
+
+A run over every group, findings included, leaves zero occurrences of the
+password, username or any session token in the Allure and Surefire output.
+
 **CI.** Values live in GitHub Actions repository secrets. The workflow writes
 `.env` from those secrets before the test step. `.env` is excluded from every
 artifact upload path so it cannot leave the runner.
@@ -285,23 +300,38 @@ String key = pc.findAnnotation(Actor.class).map(Actor::value)
                .orElseGet(() -> "page-" + pc.getIndex());
 ```
 
-The `@Actor` qualifier annotation and the keyed resolver **ship now** — together
-they are a handful of lines. What is **deferred** is any test that uses them:
-only single-`Page` tests ship in this assignment. A future two-browser test
-(`void t(@Actor("alice") Page a, @Actor("bob") Page b)`) therefore needs no
-framework change, and `void t(Page page)` stays valid under the keyed resolver.
-For a page count not known at compile time, a `PageProvider` would be injected
-instead of N parameters; `PageProvider` is deferred entirely. All created
-contexts are registered in the `ExtensionContext.Store` as `CloseableResource`
-so cleanup and failure capture iterate every page, not just the first.
+The `@Actor` qualifier and the keyed resolver ship now, and a framework self-test
+proves two actors in one test get separate contexts with no shared storage.
+Scenario tests use a single `Page`; `void t(Page page)` stays valid under the
+keyed resolver. For a page count not known at compile time, a `PageProvider`
+would be injected instead of N parameters; it is not built.
+
+Every page a test opens is tracked in a `PageRegistry` held in the test method's
+extension store. The registry is `AutoCloseable`, so JUnit closes it — and every
+context in it — when the method's context ends. (JUnit 5.13 deprecated
+`Store.CloseableResource` in favour of plain `AutoCloseable` store values.)
+
+**Closing the browsers.** Each `Playwright` a worker thread creates is recorded,
+and a small `AutoCloseable` placed in JUnit's *root* store closes them all once,
+after the whole run. Playwright objects are unsynchronised, so the rule is no
+*concurrent* use rather than strict thread affinity: closing them from another
+thread after every test has finished is safe. This is the pattern Playwright's
+own JUnit integration uses. Verified: no browser processes survive a run.
 
 ### 6.3 Stability
 
-DemoQA serves Google ad frames that shift layout and intercept clicks — the
-dominant flake source on that site. Each `BrowserContext` registers a `route`
-handler aborting requests to ad and analytics hosts. This is both faster and
-deterministic, and is preferred over scattering `scrollIntoView` calls and retry
-loops through the page objects.
+DemoQA serves ad frames that shift layout and intercept clicks — the dominant
+flake source on that site. A probe of the two pages under test found about 25
+distinct ad and tracking hosts across several ad networks, which rotate, so a
+blocklist would go stale. Each `BrowserContext` instead installs a
+**first-party allowlist**: requests to the site's own host and its subdomains
+pass, everything else is aborted.
+
+Measured on the web tables page: every ad iframe gone, time to network idle down
+about 45% (2.7 s to 1.5 s), no page errors. Only two requests actually need
+aborting — the tag loaders — because nothing downstream is ever fetched without
+them. The matcher rejects look-alike hosts (`evil-example.com` does not match
+`example.com`), which a naive `endsWith` would let through.
 
 Waiting relies on Playwright's auto-waiting plus explicit `locator.waitFor()`
 inside page objects where the SPA needs it.
@@ -487,7 +517,7 @@ configuration table.
 
 Challenges & Solutions covers: the verified-behaviour tables in section 2 (which
 answer the brief's own 200-vs-400 question with evidence), the
-`TestWatcher`-fires-after-`@AfterEach` trap, the ad-blocking decision,
+`TestWatcher`-fires-after-`@AfterEach` trap, the first-party allowlist, credential redaction in reports,
 Playwright's per-thread constraint, and Restful Booker's periodic data resets
 and Heroku cold starts.
 
