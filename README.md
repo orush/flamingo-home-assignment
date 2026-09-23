@@ -391,7 +391,7 @@ non-gating step:
 
 The Allure report produced by CI:
 
-![Allure overview: 101 test cases, 8 product defects](docs/images/allure-overview.png)
+![Allure overview: 66 test cases, 9 product defects](docs/images/allure-overview.png)
 
 A finding in the report. The failure message is the defect report:
 
